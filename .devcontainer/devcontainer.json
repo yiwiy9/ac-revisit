@@ -20,7 +20,8 @@
       "extensions": [
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
-        "bierner.markdown-mermaid"
+        "bierner.markdown-mermaid",
+        "bierner.markdown-checkbox"
       ],
       "settings": {
         "markdown-mermaid.darkModeTheme": "forest"
