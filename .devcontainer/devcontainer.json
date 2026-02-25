@@ -5,14 +5,28 @@
   "remoteUser": "node",
   "updateRemoteUserUID": true,
 
+  "mounts": [
+    "source=codex-state,target=/home/node/.codex,type=volume"
+  ],
+
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "username": "node"
+    }
+  },
+
   "customizations": {
     "vscode": {
       "extensions": [
         "dbaeumer.vscode-eslint",
-        "esbenp.prettier-vscode"
-      ]
+        "esbenp.prettier-vscode",
+        "bierner.markdown-mermaid"
+      ],
+      "settings": {
+        "markdown-mermaid.darkModeTheme": "forest"
+      }
     }
   },
 
-  "postCreateCommand": "node -v && npm -v && codex --version"
+  "postCreateCommand": "sudo chown -R node:node /home/node/.codex && node -v && npm -v && codex --version"
 }
