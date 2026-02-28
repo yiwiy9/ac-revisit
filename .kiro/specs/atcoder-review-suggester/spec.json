@@ -1,0 +1,22 @@
+{
+  "feature_name": "atcoder-review-suggester",
+  "created_at": "2026-02-28T07:58:28+00:00",
+  "updated_at": "2026-02-28T07:58:28+00:00",
+  "language": "ja",
+  "phase": "initialized",
+  "approvals": {
+    "requirements": {
+      "generated": false,
+      "approved": false
+    },
+    "design": {
+      "generated": false,
+      "approved": false
+    },
+    "tasks": {
+      "generated": false,
+      "approved": false
+    }
+  },
+  "ready_for_implementation": false
+}
