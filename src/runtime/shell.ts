@@ -95,8 +95,18 @@ export type ToggleMountError =
   | { readonly kind: "anchor_missing" }
   | { readonly kind: "problem_unresolvable" };
 
+export interface ToggleInteractionInput {
+  readonly problemId: ProblemId;
+  readonly problemTitle: ProblemTitle;
+  readonly today: LocalDateKey;
+  readonly isRegistered: boolean;
+}
+
 export interface ToggleMountCoordinatorDependencies {
   readonly pageAdapter: AtCoderPageAdapter;
+  readonly getToday?: () => LocalDateKey;
+  readonly resolveIsRegistered?: (problemId: ProblemId) => boolean;
+  readonly onToggle?: (input: ToggleInteractionInput) => boolean;
   readonly documentRef?: Document;
 }
 
@@ -335,14 +345,16 @@ export function createToggleMountCoordinator(
         };
       }
 
+      const isRegistered = dependencies.resolveIsRegistered?.(problem.problemId) ?? false;
+
       if (existingButton instanceof HTMLButtonElement) {
-        syncToggleButton(existingButton, false, problem.problemId);
+        syncToggleButton(existingButton, isRegistered, problem.problemId);
 
         return {
           ok: true,
           value: {
             mounted: false,
-            isRegistered: false,
+            isRegistered,
           },
         };
       }
@@ -351,14 +363,31 @@ export function createToggleMountCoordinator(
       button.type = "button";
       button.id = TOGGLE_BUTTON_ID;
       button.className = TOGGLE_BUTTON_CLASS;
-      syncToggleButton(button, false, problem.problemId);
+      syncToggleButton(button, isRegistered, problem.problemId);
+      const getToday = dependencies.getToday;
+      const onToggle = dependencies.onToggle;
+      if (onToggle !== undefined && getToday !== undefined) {
+        button.addEventListener("click", () => {
+          const currentRegistration = button.dataset.state === "registered";
+          const nextRegistration = onToggle({
+            problemId: problem.problemId,
+            problemTitle: problem.problemTitle,
+            today: getToday(),
+            isRegistered: currentRegistration,
+          });
+
+          if (typeof nextRegistration === "boolean") {
+            syncToggleButton(button, nextRegistration, problem.problemId);
+          }
+        });
+      }
       anchor.element.append(button);
 
       return {
         ok: true,
         value: {
           mounted: true,
-          isRegistered: false,
+          isRegistered,
         },
       };
     },

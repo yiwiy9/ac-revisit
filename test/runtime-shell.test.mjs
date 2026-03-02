@@ -412,3 +412,54 @@ test("ToggleMountCoordinator returns anchor_missing when no supported toggle anc
     error: { kind: "anchor_missing" },
   });
 });
+
+test("ToggleMountCoordinator updates the toggle state through the provided click handler", () => {
+  setDocument(
+    `
+      <div class="col-sm-12">
+        <span class="h2">D - Coming of Age Celebration</span>
+      </div>
+    `,
+    "/contests/abc388/tasks/abc388_d",
+  );
+  const adapter = createAtCoderPageAdapter(domWindow, domDocument);
+  const toggleCalls = [];
+  let registered = false;
+  const toggleMount = createToggleMountCoordinator({
+    pageAdapter: adapter,
+    getToday: () => "2026-03-02",
+    resolveIsRegistered(problemId) {
+      assert.equal(problemId, "abc388/abc388_d");
+      return registered;
+    },
+    onToggle(input) {
+      toggleCalls.push(input);
+      registered = !input.isRegistered;
+      return registered;
+    },
+  });
+
+  assert.deepEqual(toggleMount.mount(), {
+    ok: true,
+    value: {
+      mounted: true,
+      isRegistered: false,
+    },
+  });
+
+  const button = domDocument.querySelector("#ac-revisit-toggle-button");
+  assert.ok(button);
+
+  button.dispatchEvent(new domWindow.MouseEvent("click", { bubbles: true, cancelable: true }));
+
+  assert.deepEqual(toggleCalls, [
+    {
+      isRegistered: false,
+      problemId: "abc388/abc388_d",
+      problemTitle: "D - Coming of Age Celebration",
+      today: "2026-03-02",
+    },
+  ]);
+  assert.equal(button.getAttribute("data-state"), "registered");
+  assert.equal(button.textContent, "復習対象から解除");
+});
