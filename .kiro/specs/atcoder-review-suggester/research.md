@@ -43,8 +43,8 @@
   - `localStorage` は origin 単位でブラウザセッションをまたいで保存される。
   - `GM_setValue` / `GM_getValue` は userscript 固有の保存領域を提供する。
 - **Implications**:
-  - 設計上は `GM_*` ストレージを標準とし、保存形式は単一 JSON ドキュメントではなく、機能別キー分割で破損範囲を限定する。
-  - ストレージアクセスは `ReviewStoreAdapter` に隔離し、将来の保存方式変更余地を残す。
+  - 設計上は `GM_*` ストレージを標準とし、`ReviewWorkspace` 全体を単一キーの JSON スナップショットとして保存する。
+  - ストレージアクセスは `ReviewStoreAdapter` に隔離し、保存形式検証と canonical empty state フォールバックを集約する。
 
 ### Greasy Fork publishing constraints
 - **Context**: Greasy Fork 配布前提のため、配布物とメタデータの制約を確認したかった。
@@ -57,6 +57,75 @@
 - **Implications**:
   - 配布物は単体の `.user.js` を主配布対象にし、主機能を外部読み込みに依存しない。
   - メタデータ生成はビルド出力の責務に含め、公開に必要な項目を欠落させない。
+
+### AtCoder problem page DOM anchors
+- **Context**: 問題ページでのログイン判定、メニュー差し込み、問題 ID 抽出の実 DOM 根拠が必要だった。
+- **Sources Consulted**:
+  - ユーザー提供の AtCoder 問題ページ HTML 例 (`/contests/abc388/tasks/abc388_d`)
+- **Findings**:
+  - 右上ユーザーメニューは `.navbar-right > li.dropdown > a.dropdown-toggle` と、その直下の `ul.dropdown-menu` で構成される。
+  - 問題ページ URL は `/contests/{contestId}/tasks/{taskId}` 形式で、例では `abc388` と `abc388_d` を直接取得できる。
+  - 問題タイトル領域は `.col-sm-12 > span.h2` で、既存の「解説」ボタンが同居している。
+  - 問題タイトルの表示文字列は `.col-sm-12 > span.h2` のテキストノードから取得でき、同居する「解説」ボタン文字列は除外が必要である。
+- **Implications**:
+  - `AuthSessionGuard` は旧ヘッダー/新ヘッダーの DOM シグナルのみをログイン判定の契約として扱う前提で設計できる。
+  - `MenuEntryAdapter` はユーザードロップダウンの `ul.dropdown-menu` に新規 `li > a` を追加する前提で設計できる。
+  - `ProblemContextResolver` は URL パスから `contestId` と `taskId` を抽出し、`ProblemId = {contestId}/{taskId}` に正規化できる。
+  - `ProblemContextResolver` は `.col-sm-12 > span.h2` から表示用タイトルを抽出できるが、子要素のボタンやリンクを除外してプレーンテキスト化する必要がある。
+  - `ToggleMountCoordinator` は `.col-sm-12 > span.h2` 近傍を問題ページの主要挿入候補にできる。
+
+### AtCoder submission detail DOM anchors
+- **Context**: 提出詳細ページで対象問題を逆引きし、同一トグル操作を提供するための DOM 根拠が必要だった。
+- **Sources Consulted**:
+  - ユーザー提供の AtCoder 提出詳細ページ HTML 例 (`/contests/abc388/submissions/61566375`)
+- **Findings**:
+  - 提出詳細ページ URL は `/contests/{contestId}/submissions/{submissionId}` 形式で、URL 単独では `taskId` を含まない。
+  - `提出情報` テーブルの「問題」行に `/contests/abc388/tasks/abc388_d` 形式のリンクが存在する。
+  - 同じ「問題」行のリンクテキストに `D - Coming of Age Celebration` のような表示用タイトルが含まれる。
+  - ページ見出しは `.col-sm-12 > p > span.h2` に `提出 #...` を表示している。
+  - ユーザーメニュー DOM は問題ページと同一構造である。
+- **Implications**:
+  - `ProblemContextResolver` は提出詳細ページで `提出情報` テーブルの「問題」リンクを canonical source として `ProblemId` を解決する。
+  - `ProblemContextResolver` は提出詳細ページでは同じリンクの `textContent` をそのまま表示用タイトルとして取得できる。
+  - `ToggleMountCoordinator` は提出詳細ページでは `.col-sm-12 > p > span.h2` 近傍を優先挿入位置にできる。
+  - `MenuEntryAdapter` と `AuthSessionGuard` は問題ページと同じセレクタ戦略を再利用できる。
+
+### AtCoder logged out problem page DOM anchors
+- **Context**: 未ログイン時に UI を差し込まない条件を、実 DOM から観測可能に固定する必要があった。
+- **Sources Consulted**:
+  - ユーザー提供の AtCoder 未ログイン問題ページ HTML 例 (`/contests/abc388/tasks/abc388_d`)
+- **Findings**:
+  - 右上ナビゲーションにはユーザードロップダウンが存在せず、代わりに `新規登録` と `ログイン` のリンクが表示される。
+  - 問題本文とタイトル領域の DOM はログイン時とほぼ同じであり、ログイン判定を誤るとトグルだけ差し込めてしまう。
+- **Implications**:
+  - `AuthSessionGuard` はログイン DOM シグナル不在を根拠として `anonymous` 側へ倒せる。
+  - `MenuEntryAdapter` は `ul.dropdown-menu` が存在しない場合に fail closed でリンク追加を中止する。
+  - `ToggleMountCoordinator` はセッション判定が `authenticated` の場合にのみ挿入を許可する前提を維持する。
+
+### AtCoder top page logged out DOM anchors
+- **Context**: AtCoder トップページでは競技ページと異なる新ヘッダー構造が使われており、誤って競技ページ用セレクタを前提にしないようにする必要があった。
+- **Sources Consulted**:
+  - ユーザー提供の AtCoder トップページ未ログイン HTML 例 (`/`)
+- **Findings**:
+  - ヘッダーは `#header` / `.header-nav` / `.header-link` 構造で、競技ページの `.navbar` / `.dropdown-menu` とは別系統である。
+  - `.header-link` には `新規登録` / `ログイン` のリンクのみがあり、ユーザーメニューは存在しない。
+  - トップページは `/` であり、問題ページでも提出詳細ページでもない。
+- **Implications**:
+  - `UserscriptBootstrap` はトップページでも起動しうるが、`AtCoderPageAdapter.detectPage()` により `other` と判定し、問題トグルを生成しない。
+  - `AuthSessionGuard` は新ヘッダーでもログイン DOM シグナル不在を主根拠として `anonymous` と判定できる。
+  - `MenuEntryAdapter` は競技ページ用の `ul.dropdown-menu` が存在しないため fail closed となり、未ログイントップページでは何も追加しない。
+
+### AtCoder top page logged in DOM anchors
+- **Context**: トップページのログイン済み状態では新ヘッダーにマイページ領域が現れるため、常設リンクをどこへ表示するかの設計根拠が必要だった。
+- **Sources Consulted**:
+  - ユーザー提供の AtCoder トップページログイン済み HTML 例 (`/`)
+- **Findings**:
+  - 新ヘッダーは `header-mypage` / `j-dropdown_mypage` / `header-mypage_detail` を用いた独自構造で、競技ページの `ul.dropdown-menu` とは異なる。
+  - トップページはログイン済みでも URL が `/` のままで、問題ページ・提出詳細ページではない。
+- **Implications**:
+  - `AuthSessionGuard` はトップページ新ヘッダーの `header-mypage` / `header-mypage_detail` を主契約として `authenticated` 判定できる。
+  - `UserscriptBootstrap` はログイン済みトップページでも `detectPage() === other` により問題トグルを生成しない。
+  - `MenuEntryAdapter` はトップページログイン済み時、`header-mypage_detail` 内の `header-mypage_list` に常設リンクを追加対象として扱える。
 
 ## Architecture Pattern Evaluation
 
@@ -93,15 +162,35 @@
 - **Alternatives Considered**:
   1. 問題ごとに完了属性を持たせる
   2. 今日の提案状態を独立レコード化する
-- **Selected Approach**: `dailyState` を単一レコードとして保持し、`reviewItems` と分離する。
-- **Rationale**: 問題データは登録日だけ、という制約を守りやすい。
-- **Trade-offs**: 操作時に 2 キー更新が必要になるため、書き込み順とロールバック方針が重要になる。
-- **Follow-up**: 設計で compare and swap ではなく read modify write の一括コミット手順を定義する。
+- **Selected Approach**: `ReviewWorkspace = { reviewItems, dailyState }` の中で `dailyState` を単一レコードとして保持し、`reviewItems` と同一スナップショット内で更新する。
+- **Rationale**: 問題データを「識別子・表示用タイトル・登録日」に限定したまま、今日の状態だけを別責務として管理しやすい。
+- **Trade-offs**: 更新ごとに `ReviewWorkspace` 全体を書き換えるため、保存粒度は大きくなる。
+- **Follow-up**: 設計で single snapshot の read modify write 手順と保存値検証ルールを定義する。
+
+### Decision: 日跨ぎ時の未完了提案は持ち越さず、自動表示は bootstrap が担当する
+- **Context**: 日跨ぎルールと自動ポップアップの責務分担が曖昧だと、実装者ごとに挙動がぶれる。
+- **Alternatives Considered**:
+  1. 前日未完了提案をそのまま持ち越す
+  2. 日跨ぎ時に前日提案を stale として扱い、その日の評価結果へ置き換える
+- **Selected Approach**: `DailySuggestionService` は日跨ぎ時に前日提案を継続扱いにせず、候補があれば新しい当日提案で上書きし、候補がなければ `activeProblemId = null` として破棄する。自動表示の起点は `UserscriptBootstrap` が担当する。
+- **Rationale**: Requirement 4.3 / 4.5 の「持ち越さない」をそのまま日次正規化に反映できる。
+- **Trade-offs**: 前日未完了でも翌日に同じ問題が消える、または再抽選される可能性がある。
+- **Follow-up**: タスク化時に日跨ぎの統合テストを追加する。
+
+### Decision: 複合更新は単一スナップショット更新に固定する
+- **Context**: `reviewItems` と `dailyState` の整合を保ちつつ、ストレージ失敗時に中間状態を書き出さない手順を固定する必要があった。
+- **Alternatives Considered**:
+  1. 複数キーへ分割して書き込み順を管理する
+  2. `ReviewWorkspace` 全体を単一キーへ一括保存する
+- **Selected Approach**: `ac_revisit_workspace_v1` に `SchemaEnvelope` 全体を 1 回で直列化して保存し、部分状態や中間断片は書き出さない。
+- **Rationale**: 真の原子性は保証できなくても、userscript 側から partial state を発生させない手順に固定できる。
+- **Trade-offs**: 更新ごとに保存対象全体を書き換えるため、旧 schema との互換が崩れた場合は空状態フォールバックになりうる。
+- **Follow-up**: `writeWorkspace` の単一スナップショット保存と schema mismatch 時の canonical empty state をテストで検証する。
 
 ## Risks & Mitigations
 - AtCoder の DOM 変更でメニュー挿入位置が崩れる — `AtCoderPageAdapter` にセレクタ探索と fail closed を集約し、挿入不可時は UI を出さない。
 - 日付境界の解釈差で 1 日 1 回制御が不安定になる — ブラウザのローカル日付文字列 `YYYY-MM-DD` を正規化キーとして保存する。
-- ストレージ書き込み途中で不整合が出る — `TransactionCoordinator` で更新計画を先に構築し、成功確認後にメモリキャッシュを更新する。
+- ストレージ書き込み失敗や破損値で不整合が出る — `ReviewStoreAdapter` で単一スナップショット保存、schema 検証、canonical empty state フォールバックを一箇所に集約する。
 
 ## References
 - [Tampermonkey Documentation](https://www.tampermonkey.net/documentation.php) — metadata block、grant、storage API の根拠
