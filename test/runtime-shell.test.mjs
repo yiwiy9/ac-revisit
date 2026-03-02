@@ -5,6 +5,8 @@ import {
   createAtCoderPageAdapter,
   createAuthSessionGuard,
   createMenuEntryAdapter,
+  createProblemContextResolver,
+  createToggleMountCoordinator,
 } from "../src/runtime/shell.ts";
 
 const domWindow = globalThis.window;
@@ -196,4 +198,217 @@ test("MenuEntryAdapter returns anchor_missing when no supported menu anchor exis
     error: { kind: "anchor_missing" },
   });
   assert.equal(domDocument.querySelector("#ac-revisit-menu-entry"), null);
+});
+
+test("AtCoderPageAdapter reads the problem page context from the canonical heading DOM", () => {
+  setDocument(
+    `
+      <div class="col-sm-12">
+        <span class="h2">
+          D - Coming of Age Celebration
+          <a class="btn btn-default btn-sm">解説</a>
+        </span>
+      </div>
+    `,
+    "/contests/abc388/tasks/abc388_d",
+  );
+  const adapter = createAtCoderPageAdapter(domWindow, domDocument);
+
+  assert.deepEqual(adapter.readProblemContextSource(), {
+    kind: "problem",
+    pathname: "/contests/abc388/tasks/abc388_d",
+    problemTitleText: "D - Coming of Age Celebration",
+  });
+});
+
+test("AtCoderPageAdapter reads the submission detail context from the task link in the first details table", () => {
+  setDocument(
+    `
+      <div class="col-sm-12">
+        <p><span class="h2">提出 #61566375</span></p>
+        <table class="table table-bordered">
+          <tbody>
+            <tr>
+              <th>問題</th>
+              <td>
+                <a href="/contests/abc388/tasks/abc388_d">D - Coming of Age Celebration</a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `,
+    "/contests/abc388/submissions/61566375",
+  );
+  const adapter = createAtCoderPageAdapter(domWindow, domDocument);
+
+  assert.deepEqual(adapter.readProblemContextSource(), {
+    kind: "submission_detail",
+    taskHref: "/contests/abc388/tasks/abc388_d",
+    taskTitleText: "D - Coming of Age Celebration",
+  });
+});
+
+test("ProblemContextResolver normalizes the current problem on both supported contest page shapes", () => {
+  setDocument(
+    `
+      <div class="col-sm-12">
+        <span class="h2">D - Coming of Age Celebration</span>
+      </div>
+    `,
+    "/contests/abc388/tasks/abc388_d",
+  );
+
+  const problemResolver = createProblemContextResolver(
+    createAtCoderPageAdapter(domWindow, domDocument),
+  );
+
+  assert.deepEqual(problemResolver.resolveCurrentProblem(), {
+    kind: "resolved",
+    contestId: "abc388",
+    problemId: "abc388/abc388_d",
+    problemTitle: "D - Coming of Age Celebration",
+  });
+
+  setDocument(
+    `
+      <div class="col-sm-12">
+        <p><span class="h2">提出 #61566375</span></p>
+        <table class="table table-bordered">
+          <tbody>
+            <tr>
+              <th>問題</th>
+              <td>
+                <a href="/contests/abc388/tasks/abc388_d">D - Coming of Age Celebration</a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `,
+    "/contests/abc388/submissions/61566375",
+  );
+
+  const submissionResolver = createProblemContextResolver(
+    createAtCoderPageAdapter(domWindow, domDocument),
+  );
+
+  assert.deepEqual(submissionResolver.resolveCurrentProblem(), {
+    kind: "resolved",
+    contestId: "abc388",
+    problemId: "abc388/abc388_d",
+    problemTitle: "D - Coming of Age Celebration",
+  });
+});
+
+test("ToggleMountCoordinator mounts one toggle button on the problem page heading anchor", () => {
+  setDocument(
+    `
+      <div class="col-sm-12">
+        <span class="h2">
+          D - Coming of Age Celebration
+          <a class="btn btn-default btn-sm">解説</a>
+        </span>
+      </div>
+    `,
+    "/contests/abc388/tasks/abc388_d",
+  );
+  const adapter = createAtCoderPageAdapter(domWindow, domDocument);
+  const toggleMount = createToggleMountCoordinator({ pageAdapter: adapter });
+
+  assert.deepEqual(toggleMount.mount(), {
+    ok: true,
+    value: {
+      mounted: true,
+      isRegistered: false,
+    },
+  });
+  assert.deepEqual(toggleMount.mount(), {
+    ok: true,
+    value: {
+      mounted: false,
+      isRegistered: false,
+    },
+  });
+
+  const button = domDocument.querySelector("#ac-revisit-toggle-button");
+
+  assert.ok(button);
+  assert.equal(button.textContent, "復習対象に追加");
+  assert.equal(button.getAttribute("data-state"), "unregistered");
+  assert.equal(domDocument.querySelectorAll("#ac-revisit-toggle-button").length, 1);
+});
+
+test("ToggleMountCoordinator mounts one toggle button on the submission detail heading anchor", () => {
+  setDocument(
+    `
+      <div class="col-sm-12">
+        <p><span class="h2">提出 #61566375</span></p>
+        <table class="table table-bordered">
+          <tbody>
+            <tr>
+              <th>問題</th>
+              <td>
+                <a href="/contests/abc388/tasks/abc388_d">D - Coming of Age Celebration</a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `,
+    "/contests/abc388/submissions/61566375",
+  );
+  const adapter = createAtCoderPageAdapter(domWindow, domDocument);
+  const toggleMount = createToggleMountCoordinator({ pageAdapter: adapter });
+
+  assert.deepEqual(toggleMount.mount(), {
+    ok: true,
+    value: {
+      mounted: true,
+      isRegistered: false,
+    },
+  });
+
+  const button = domDocument.querySelector("#ac-revisit-toggle-button");
+  const heading = domDocument.querySelector(".col-sm-12 > p > span.h2");
+
+  assert.ok(button);
+  assert.equal(button.parentElement, heading?.parentElement);
+});
+
+test("ToggleMountCoordinator fails closed when the problem context cannot be resolved", () => {
+  setDocument(
+    `
+      <div class="col-sm-12">
+        <span class="h2"></span>
+      </div>
+    `,
+    "/contests/abc388/tasks/abc388_d",
+  );
+  const adapter = createAtCoderPageAdapter(domWindow, domDocument);
+  const toggleMount = createToggleMountCoordinator({ pageAdapter: adapter });
+
+  assert.deepEqual(toggleMount.mount(), {
+    ok: false,
+    error: { kind: "problem_unresolvable" },
+  });
+  assert.equal(domDocument.querySelector("#ac-revisit-toggle-button"), null);
+});
+
+test("ToggleMountCoordinator returns anchor_missing when no supported toggle anchor exists", () => {
+  setDocument(
+    `
+      <div class="col-sm-12">
+        <div>D - Coming of Age Celebration</div>
+      </div>
+    `,
+    "/contests/abc388/tasks/abc388_d",
+  );
+  const adapter = createAtCoderPageAdapter(domWindow, domDocument);
+  const toggleMount = createToggleMountCoordinator({ pageAdapter: adapter });
+
+  assert.deepEqual(toggleMount.mount(), {
+    ok: false,
+    error: { kind: "anchor_missing" },
+  });
 });

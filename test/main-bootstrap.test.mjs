@@ -24,6 +24,7 @@ test("bootstrapUserscript mounts the persistent menu entry only for authenticate
   assert.deepEqual(bootstrapUserscript(), {
     session: "anonymous",
     menuEntryMounted: false,
+    toggleMounted: false,
   });
 
   setDocument(
@@ -38,6 +39,9 @@ test("bootstrapUserscript mounts the persistent menu entry only for authenticate
           </li>
         </ul>
       </nav>
+      <div class="col-sm-12">
+        <span class="h2">A - Happy Birthday!</span>
+      </div>
     `,
     "/contests/abc100/tasks/abc100_a",
   );
@@ -47,6 +51,8 @@ test("bootstrapUserscript mounts the persistent menu entry only for authenticate
   assert.deepEqual(rerunResult, {
     session: "authenticated",
     menuEntryMounted: true,
+    toggleMounted: true,
   });
   assert.equal(domDocument.querySelector("#ac-revisit-menu-entry-link")?.textContent, "ac-revisit 操作");
+  assert.equal(domDocument.querySelector("#ac-revisit-toggle-button")?.textContent, "復習対象に追加");
 });
