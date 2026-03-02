@@ -1,3 +1,4 @@
+import { build as bundle } from "esbuild";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,12 +8,6 @@ const DEFAULT_DESCRIPTION = "AtCoder で復習したい問題を静かに提案�
 const DEFAULT_MATCH = "https://atcoder.jp/*";
 const DEFAULT_GRANTS = ["GM_getValue", "GM_setValue"];
 const DEFAULT_RUN_AT = "document-end";
-const DEFAULT_RUNTIME = `(() => {
-  "use strict";
-
-  // Runtime implementation will be introduced in later tasks.
-})();
-`;
 
 function toFilesystemPath(targetPath) {
   if (targetPath instanceof URL) {
@@ -40,9 +35,11 @@ function buildMetadataBlock({ name, version }) {
 export async function buildUserscript({
   packageJsonPath = new URL("../package.json", import.meta.url),
   outputPath = new URL("../dist/ac-revisit.user.js", import.meta.url),
+  entryPointPath = new URL("../src/main.ts", import.meta.url),
 } = {}) {
   const resolvedPackageJsonPath = toFilesystemPath(packageJsonPath);
   const resolvedOutputPath = toFilesystemPath(outputPath);
+  const resolvedEntryPointPath = toFilesystemPath(entryPointPath);
   const rawPackageJson = await readFile(resolvedPackageJsonPath, "utf8");
   const packageJson = JSON.parse(rawPackageJson);
   const missingFields = [];
@@ -61,10 +58,26 @@ export async function buildUserscript({
     );
   }
 
+  const bundleResult = await bundle({
+    entryPoints: [resolvedEntryPointPath],
+    bundle: true,
+    charset: "utf8",
+    format: "iife",
+    legalComments: "none",
+    platform: "browser",
+    target: ["es2022"],
+    write: false,
+  });
+  const runtime = bundleResult.outputFiles.at(0)?.text;
+
+  if (!runtime) {
+    throw new Error("Build failed: no bundle output was generated");
+  }
+
   const userscript = `${buildMetadataBlock({
     name: packageJson.name,
     version: packageJson.version,
-  })}${DEFAULT_RUNTIME}`;
+  })}${runtime}`;
 
   await mkdir(path.dirname(resolvedOutputPath), { recursive: true });
   await writeFile(resolvedOutputPath, userscript, "utf8");

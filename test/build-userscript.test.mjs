@@ -10,7 +10,10 @@ test("package.json exposes the canonical build script for the userscript bundle"
   const packageJsonPath = new URL("../package.json", import.meta.url);
   const packageJson = JSON.parse(await readFile(packageJsonPath, "utf8"));
 
-  assert.equal(packageJson.scripts.build, "node scripts/build-userscript.mjs");
+  assert.equal(
+    packageJson.scripts.build,
+    "npm run verify && node scripts/build-userscript.mjs",
+  );
 });
 
 test("buildUserscript emits a single userscript bundle with required metadata", async () => {
