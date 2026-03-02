@@ -5,7 +5,7 @@ import type {
   Result,
   ReviewItem,
   ReviewWorkspace,
-} from "./shared/types.ts";
+} from "../shared/types.ts";
 
 const SCHEMA_VERSION = 1;
 const PROBLEM_ID_PATTERN = /^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+$/;
@@ -61,7 +61,9 @@ export function createReviewStoreAdapter(storage: ReviewStorePort): ReviewStoreA
       return success(parsed ?? createCanonicalReviewWorkspace());
     },
     writeWorkspace(input) {
-      const normalizedWorkspace = normalizeWorkspace(input);
+      const normalizedWorkspace = normalizeWorkspace(
+        validateWorkspace(input) ?? createCanonicalReviewWorkspace(),
+      );
       const payload = JSON.stringify({
         version: SCHEMA_VERSION,
         payload: normalizedWorkspace,
