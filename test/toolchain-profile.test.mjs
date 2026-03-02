@@ -1,6 +1,7 @@
-import test from "node:test";
+// @vitest-environment node
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { test } from "vitest";
 
 async function readJson(filePath) {
   return JSON.parse(await readFile(filePath, "utf8"));
@@ -14,12 +15,15 @@ test("package.json defines isolated tooling scripts and devDependencies", async 
   assert.equal(packageJson.scripts.typecheck, "tsc --noEmit");
   assert.equal(packageJson.scripts.verify, "npm run lint && npm run typecheck");
   assert.equal(packageJson.scripts.build, "npm run verify && node scripts/build-userscript.mjs");
+  assert.equal(packageJson.scripts.test, "vitest run --environment jsdom");
   assert.equal(
     packageJson.devDependencies.typescript,
     "^5.8.2",
   );
   assert.equal(packageJson.devDependencies.esbuild, "^0.25.0");
   assert.equal(packageJson.devDependencies.eslint, "^9.21.0");
+  assert.equal(packageJson.devDependencies.vitest, "^3.2.4");
+  assert.equal(packageJson.devDependencies.jsdom, "^26.0.0");
   assert.equal(
     packageJson.devDependencies["@types/tampermonkey"],
     "^5.0.4",
