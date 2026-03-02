@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. 配布基盤と品質ゲートを整備する
+- [x] 1. 配布基盤と品質ゲートを整備する
 - [x] 1.1 userscript 配布物の公開契約を成立させる
   - Greasy Fork へ公開できる metadata を持つ単一配布物を生成し、AtCoder 全体を対象 URL に固定する。
   - Tampermonkey 前提の権限宣言を最小限に留め、外部 JavaScript 読み込みを前提にしない。
