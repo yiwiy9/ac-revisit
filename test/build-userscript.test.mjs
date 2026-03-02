@@ -41,6 +41,7 @@ test("buildUserscript emits a single userscript bundle with required metadata", 
     assert.match(output, /^\/\/ @run-at\s+document-end$/m);
     assert.match(output, /^\/\/ ==\/UserScript==/m);
     assert.match(output, /\(\(\) => \{/);
+    assert.match(output, /ac-revisit 操作/);
     assert.doesNotMatch(output, /@require/);
   } finally {
     await rm(tempDir, { recursive: true, force: true });
