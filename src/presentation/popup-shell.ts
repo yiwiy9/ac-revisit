@@ -15,6 +15,7 @@ const POPUP_ROOT_ID = "ac-revisit-popup-root";
 const POPUP_OVERLAY_ID = "ac-revisit-popup-overlay";
 const POPUP_PANEL_ID = "ac-revisit-popup-panel";
 const POPUP_TITLE_ID = "ac-revisit-popup-title";
+const POPUP_CLOSE_ID = "ac-revisit-popup-close";
 const POPUP_TODAY_LINK_ID = "ac-revisit-popup-today-link";
 const POPUP_ACTION_ID = "ac-revisit-popup-action";
 const POPUP_TRIGGER_ROLE = "trigger";
@@ -117,6 +118,7 @@ export function createPopupShellPresenter(
   interactions: PopupShellInteractions = {},
 ): PopupShellPresenter {
   const interactionSessionValidator = createInteractionSessionValidator();
+  let lastFocusedElement: HTMLElement | null = null;
 
   const presentPopup: PopupShellPresenter = (input) => {
     let popup = documentRef.getElementById(POPUP_ROOT_ID);
@@ -124,6 +126,7 @@ export function createPopupShellPresenter(
     if (popup === null) {
       popup = documentRef.createElement("section");
       popup.id = POPUP_ROOT_ID;
+      popup.tabIndex = -1;
       popup.setAttribute("role", "dialog");
       popup.setAttribute("aria-modal", "true");
 
@@ -139,6 +142,12 @@ export function createPopupShellPresenter(
       title.id = POPUP_TITLE_ID;
       title.textContent = "今日の一問";
       panel.append(title);
+
+      const closeButton = documentRef.createElement("button");
+      closeButton.id = POPUP_CLOSE_ID;
+      closeButton.type = "button";
+      closeButton.textContent = "閉じる";
+      panel.append(closeButton);
 
       const triggerLabel = documentRef.createElement("p");
       triggerLabel.dataset.role = POPUP_TRIGGER_ROLE;
@@ -162,9 +171,18 @@ export function createPopupShellPresenter(
     popup.dataset.activeProblemId = input.reviewWorkspace.dailyState.activeProblemId ?? "";
     popup.dataset.lastDailyEvaluatedOn = input.reviewWorkspace.dailyState.lastDailyEvaluatedOn ?? "";
     popup.setAttribute("aria-labelledby", POPUP_TITLE_ID);
+    const overlay = popup.querySelector<HTMLDivElement>(`#${POPUP_OVERLAY_ID}`);
+    const closeButton = popup.querySelector<HTMLButtonElement>(`#${POPUP_CLOSE_ID}`);
     const triggerLabel = popup.querySelector<HTMLElement>("[data-role='trigger']");
     const todayLink = popup.querySelector<HTMLAnchorElement>(`#${POPUP_TODAY_LINK_ID}`);
     const actionButton = popup.querySelector<HTMLButtonElement>(`#${POPUP_ACTION_ID}`);
+
+    if (
+      documentRef.activeElement instanceof HTMLElement &&
+      !popup.contains(documentRef.activeElement)
+    ) {
+      lastFocusedElement = documentRef.activeElement;
+    }
 
     if (triggerLabel !== null) {
       triggerLabel.textContent =
@@ -193,6 +211,18 @@ export function createPopupShellPresenter(
     if (actionButton !== null) {
       actionButton.textContent = input.viewModel.primaryActionLabel;
       actionButton.disabled = !input.viewModel.primaryAction.enabled;
+    }
+
+    if (overlay !== null) {
+      overlay.onclick = () => {
+        dismissPopup(popup);
+      };
+    }
+
+    if (closeButton !== null) {
+      closeButton.onclick = () => {
+        dismissPopup(popup);
+      };
     }
 
     if (todayLink !== null) {
@@ -237,6 +267,15 @@ export function createPopupShellPresenter(
         }
       };
     }
+
+    popup.onkeydown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        dismissPopup(popup);
+      }
+    };
+
+    popup.focus();
   };
 
   return presentPopup;
@@ -287,6 +326,16 @@ export function createPopupShellPresenter(
       source: currentSource,
       today,
     };
+  }
+
+  function dismissPopup(popup: HTMLElement) {
+    popup.remove();
+
+    if (lastFocusedElement !== null && documentRef.contains(lastFocusedElement)) {
+      lastFocusedElement.focus();
+    }
+
+    lastFocusedElement = null;
   }
 }
 

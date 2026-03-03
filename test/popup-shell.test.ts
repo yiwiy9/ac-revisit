@@ -74,6 +74,7 @@ test("PopupShellPresenter renders one shared popup skeleton for both menu and bo
   const overlay = domDocument.querySelector("#ac-revisit-popup-overlay");
   const panel = domDocument.querySelector("#ac-revisit-popup-panel");
   const heading = domDocument.querySelector("#ac-revisit-popup-title");
+  const closeButton = domDocument.querySelector("#ac-revisit-popup-close");
   const actionButton = domDocument.querySelector("#ac-revisit-popup-action");
 
   expect(root).toBeTruthy();
@@ -83,6 +84,7 @@ test("PopupShellPresenter renders one shared popup skeleton for both menu and bo
   expect(overlay).toBeTruthy();
   expect(panel).toBeTruthy();
   expect(heading?.textContent).toBe("今日の一問");
+  expect(closeButton?.textContent).toBe("閉じる");
   expect(actionButton?.tagName).toBe("BUTTON");
 
   presentPopup(
@@ -108,6 +110,46 @@ test("PopupShellPresenter renders one shared popup skeleton for both menu and bo
   expect(domDocument.querySelector("#ac-revisit-popup-root")?.getAttribute("data-source")).toBe(
     "bootstrap",
   );
+});
+
+test("PopupShellPresenter dismisses the popup from the close button, overlay, and Escape key", () => {
+  clearDocument();
+
+  const presentPopup = createPopupShellPresenter(domDocument);
+  const snapshot = buildSnapshot({
+    source: "menu",
+    today: "2026-03-02",
+    reviewItems: [
+      {
+        problemId: "abc100/abc100_a",
+        problemTitle: "A - Happy Birthday!",
+        registeredOn: "2026-02-16",
+      },
+    ],
+    dailyState: {
+      activeProblemId: "abc100/abc100_a",
+      status: "incomplete",
+      lastDailyEvaluatedOn: "2026-03-02",
+    },
+  });
+
+  presentPopup(snapshot);
+  domDocument
+    .querySelector<HTMLButtonElement>("#ac-revisit-popup-close")
+    ?.dispatchEvent(new domWindow.MouseEvent("click", { bubbles: true, cancelable: true }));
+  expect(domDocument.querySelector("#ac-revisit-popup-root")).toBeNull();
+
+  presentPopup(snapshot);
+  domDocument
+    .querySelector<HTMLDivElement>("#ac-revisit-popup-overlay")
+    ?.dispatchEvent(new domWindow.MouseEvent("click", { bubbles: true, cancelable: true }));
+  expect(domDocument.querySelector("#ac-revisit-popup-root")).toBeNull();
+
+  presentPopup(snapshot);
+  domDocument
+    .querySelector<HTMLElement>("#ac-revisit-popup-root")
+    ?.dispatchEvent(new domWindow.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  expect(domDocument.querySelector("#ac-revisit-popup-root")).toBeNull();
 });
 
 test("PopupShellPresenter enables the today link and labels the action as complete while today's problem is incomplete", () => {
