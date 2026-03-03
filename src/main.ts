@@ -80,6 +80,8 @@ export function bootstrapUserscript(
     };
   }
 
+  const page = pageAdapter.detectPage();
+
   const localDateProvider = createLocalDateProvider();
   const getToday = dependencies.getToday ?? (() => localDateProvider.today());
   const reviewStore = createReviewStoreAdapter(
@@ -192,21 +194,6 @@ export function bootstrapUserscript(
     defaultPopupPresenter(toPopupShellRequest(input));
   }
 
-  const page = pageAdapter.detectPage();
-  const today = getToday();
-  const dailySuggestionResult = dailySuggestionService.ensureTodaySuggestion({
-    today,
-    trigger: "bootstrap",
-  });
-
-  if (dailySuggestionResult.ok && dailySuggestionResult.value.shouldAutoOpenPopup) {
-    presentPopup({
-      source: "bootstrap",
-      today,
-      reviewWorkspace: dailySuggestionResult.value.reviewWorkspace,
-    });
-  }
-
   const menuEntryAdapter = createMenuEntryAdapter({
     pageAdapter,
     getToday,
@@ -263,6 +250,20 @@ export function bootstrapUserscript(
     page.kind === "problem" || page.kind === "submission_detail"
       ? toggleMountCoordinator.mount()
       : null;
+
+  const today = getToday();
+  const dailySuggestionResult = dailySuggestionService.ensureTodaySuggestion({
+    today,
+    trigger: "bootstrap",
+  });
+
+  if (dailySuggestionResult.ok && dailySuggestionResult.value.shouldAutoOpenPopup) {
+    presentPopup({
+      source: "bootstrap",
+      today,
+      reviewWorkspace: dailySuggestionResult.value.reviewWorkspace,
+    });
+  }
 
   return {
     session: "authenticated",

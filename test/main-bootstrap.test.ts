@@ -156,6 +156,58 @@ describe("bootstrapUserscript", () => {
     expect(popupCalls).toHaveLength(1);
   });
 
+  test("mounts available startup entrypoints before the bootstrap auto-popup opens", () => {
+    const storageDouble = createMemoryStorageDouble();
+    const popupCalls: Array<
+      PopupRequest & {
+        readonly menuEntryMountedAtOpen: boolean;
+        readonly toggleMountedAtOpen: boolean;
+      }
+    > = [];
+
+    seedWorkspace(storageDouble.storage, {
+      reviewItems: [
+        {
+          problemId: "abc100/abc100_a",
+          problemTitle: "A - Happy Birthday!",
+          registeredOn: "2026-02-16",
+        },
+      ],
+      dailyState: {
+        activeProblemId: null,
+        status: "complete",
+        lastDailyEvaluatedOn: null,
+      },
+    });
+    setDocument(authenticatedProblemPageHtml(), PROBLEM_PAGE_PATH);
+
+    bootstrapUserscript({
+      reviewStorage: storageDouble.storage,
+      getToday: () => "2026-03-02",
+      openPopup(input) {
+        popupCalls.push({
+          ...input,
+          menuEntryMountedAtOpen: domDocument.getElementById("ac-revisit-menu-entry") !== null,
+          toggleMountedAtOpen: domDocument.getElementById("ac-revisit-toggle-button") !== null,
+        });
+      },
+    });
+
+    expect(popupCalls).toEqual([
+      {
+        source: "bootstrap",
+        today: "2026-03-02",
+        dailyState: {
+          activeProblemId: "abc100/abc100_a",
+          status: "incomplete",
+          lastDailyEvaluatedOn: "2026-03-02",
+        },
+        menuEntryMountedAtOpen: true,
+        toggleMountedAtOpen: true,
+      },
+    ]);
+  });
+
   test("renders the shared popup shell by default for bootstrap auto-open", () => {
     const storageDouble = createMemoryStorageDouble();
 
