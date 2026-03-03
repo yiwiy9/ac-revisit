@@ -1,4 +1,5 @@
 import type { DailySuggestionState, LocalDateKey, ReviewItem } from "../shared/types";
+import { createInteractionSessionValidator } from "../domain/interaction-session";
 import { createPopupViewModelFactory } from "./popup-view-model";
 
 const POPUP_ROOT_ID = "ac-revisit-popup-root";
@@ -19,12 +20,30 @@ export interface PopupShellRequest {
 
 export type PopupShellPresenter = (input: PopupShellRequest) => void;
 
+export interface PopupShellRefreshInput {
+  readonly source: "menu" | "bootstrap";
+  readonly today: LocalDateKey;
+}
+
+export interface PopupShellActionInput extends PopupShellRefreshInput {
+  readonly action: "complete" | "fetch_next";
+  readonly expectedDailyState: DailySuggestionState;
+}
+
+export interface PopupShellInteractions {
+  readonly getToday?: () => LocalDateKey;
+  readonly refreshPopup?: (input: PopupShellRefreshInput) => PopupShellRequest | null;
+  readonly runPrimaryAction?: (input: PopupShellActionInput) => PopupShellRequest | null;
+}
+
 export function createPopupShellPresenter(
   documentRef: Document = document,
+  interactions: PopupShellInteractions = {},
 ): PopupShellPresenter {
   const popupViewModelFactory = createPopupViewModelFactory();
+  const interactionSessionValidator = createInteractionSessionValidator();
 
-  return (input) => {
+  const presentPopup: PopupShellPresenter = (input) => {
     let popup = documentRef.getElementById(POPUP_ROOT_ID);
 
     if (popup === null) {
@@ -103,7 +122,95 @@ export function createPopupShellPresenter(
       actionButton.textContent = viewModel.primaryActionLabel;
       actionButton.disabled = !viewModel.primaryAction.enabled;
     }
+
+    if (todayLink !== null) {
+      todayLink.onclick = (event) => {
+        const interactionState = revalidateInteraction({
+          renderedInput: input,
+          currentSource: input.source,
+        });
+
+        if (interactionState.kind === "stale") {
+          event.preventDefault();
+        }
+      };
+    }
+
+    if (actionButton !== null) {
+      actionButton.onclick = (event) => {
+        event.preventDefault();
+
+        if (!viewModel.primaryAction.enabled) {
+          return;
+        }
+
+        const interactionState = revalidateInteraction({
+          renderedInput: input,
+          currentSource: input.source,
+        });
+
+        if (interactionState.kind === "stale") {
+          return;
+        }
+
+        const nextPopup = interactions.runPrimaryAction?.({
+          action: viewModel.primaryActionKind,
+          source: interactionState.source,
+          today: interactionState.today,
+          expectedDailyState: interactionState.currentInput.dailyState,
+        });
+
+        if (nextPopup !== null && nextPopup !== undefined) {
+          presentPopup(nextPopup);
+        }
+      };
+    }
   };
+
+  return presentPopup;
+
+  function revalidateInteraction({
+    renderedInput,
+    currentSource,
+  }: {
+    readonly renderedInput: PopupShellRequest;
+    readonly currentSource: "menu" | "bootstrap";
+  }):
+    | {
+        readonly kind: "valid";
+        readonly currentInput: PopupShellRequest;
+        readonly source: "menu" | "bootstrap";
+        readonly today: LocalDateKey;
+      }
+    | { readonly kind: "stale" } {
+    const today = interactions.getToday?.() ?? renderedInput.today;
+    const latestInput =
+      interactions.refreshPopup?.({
+        source: currentSource,
+        today,
+      }) ?? renderedInput;
+
+    if (
+      interactionSessionValidator.validate({
+        expectedDailyState: renderedInput.dailyState,
+        actualDailyState: latestInput.dailyState,
+        today,
+      }).kind === "stale"
+    ) {
+      if (latestInput !== renderedInput) {
+        presentPopup(latestInput);
+      }
+
+      return { kind: "stale" };
+    }
+
+    return {
+      kind: "valid",
+      currentInput: latestInput,
+      source: currentSource,
+      today,
+    };
+  }
 }
 
 function toProblemPath(problemId: string): string {

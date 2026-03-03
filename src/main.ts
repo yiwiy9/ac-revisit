@@ -2,7 +2,11 @@ import { createCandidateSelectionService } from "./domain/candidate-selection";
 import { createDailySuggestionService } from "./domain/daily-suggestion";
 import { createReviewMutationService } from "./domain/review-mutation";
 import { createReviewStoreAdapter, type ReviewStorePort } from "./persistence/review-store";
-import { createPopupShellPresenter } from "./presentation/popup-shell";
+import {
+  createPopupShellPresenter,
+  type PopupShellActionInput,
+  type PopupShellRequest,
+} from "./presentation/popup-shell";
 import { createLocalDateMath, createLocalDateProvider } from "./shared/date";
 import type { DailySuggestionState, LocalDateKey, ReviewWorkspace } from "./shared/types";
 import {
@@ -81,8 +85,6 @@ export function bootstrapUserscript(
   const reviewStore = createReviewStoreAdapter(
     dependencies.reviewStorage ?? createUserscriptReviewStorage(),
   );
-  const defaultPopupPresenter =
-    dependencies.openPopup === undefined ? createPopupShellPresenter() : null;
   const localDateMath = createLocalDateMath();
   const candidateSelectionService = createCandidateSelectionService({
     localDateMath,
@@ -96,6 +98,82 @@ export function bootstrapUserscript(
     reviewStore,
     candidateSelectionService,
   });
+
+  function toPopupShellRequest(input: {
+    readonly source: "menu" | "bootstrap";
+    readonly today: LocalDateKey;
+    readonly reviewWorkspace: ReviewWorkspace;
+  }): PopupShellRequest {
+    const dueCandidates = candidateSelectionService.listDueCandidates({
+      today: input.today,
+      reviewItems: input.reviewWorkspace.reviewItems,
+    });
+
+    return {
+      source: input.source,
+      today: input.today,
+      reviewItems: input.reviewWorkspace.reviewItems,
+      dailyState: input.reviewWorkspace.dailyState,
+      hasDueCandidates: dueCandidates.length > 0,
+    };
+  }
+
+  function refreshPopupState(input: {
+    readonly source: "menu" | "bootstrap";
+    readonly today: LocalDateKey;
+  }): PopupShellRequest | null {
+    const result = dailySuggestionService.ensureTodaySuggestion({
+      today: input.today,
+      trigger: "menu",
+    });
+
+    if (!result.ok) {
+      return null;
+    }
+
+    return toPopupShellRequest({
+      source: input.source,
+      today: input.today,
+      reviewWorkspace: result.value.reviewWorkspace,
+    });
+  }
+
+  function runPopupPrimaryAction(input: PopupShellActionInput): PopupShellRequest | null {
+    const result =
+      input.action === "complete"
+        ? reviewMutationService.completeTodayProblem({
+            today: input.today,
+            expectedDailyState: input.expectedDailyState,
+          })
+        : reviewMutationService.fetchNextTodayProblem({
+            today: input.today,
+            expectedDailyState: input.expectedDailyState,
+          });
+
+    if (!result.ok) {
+      return result.error.kind === "stale_session"
+        ? refreshPopupState({
+            source: input.source,
+            today: input.today,
+          })
+        : null;
+    }
+
+    return toPopupShellRequest({
+      source: input.source,
+      today: input.today,
+      reviewWorkspace: result.value.reviewWorkspace,
+    });
+  }
+
+  const defaultPopupPresenter =
+    dependencies.openPopup === undefined
+      ? createPopupShellPresenter(document, {
+          getToday,
+          refreshPopup: refreshPopupState,
+          runPrimaryAction: runPopupPrimaryAction,
+        })
+      : null;
 
   function presentPopup(input: {
     readonly source: "menu" | "bootstrap";
@@ -111,17 +189,7 @@ export function bootstrapUserscript(
       return;
     }
 
-    const dueCandidates = candidateSelectionService.listDueCandidates({
-      today: input.today,
-      reviewItems: input.reviewWorkspace.reviewItems,
-    });
-    defaultPopupPresenter({
-      source: input.source,
-      today: input.today,
-      reviewItems: input.reviewWorkspace.reviewItems,
-      dailyState: input.reviewWorkspace.dailyState,
-      hasDueCandidates: dueCandidates.length > 0,
-    });
+    defaultPopupPresenter(toPopupShellRequest(input));
   }
 
   const page = pageAdapter.detectPage();
