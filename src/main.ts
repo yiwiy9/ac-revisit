@@ -1,6 +1,9 @@
+import { createDailySuggestionService } from "./domain/daily-suggestion";
 import { createReviewMutationService } from "./domain/review-mutation";
 import { createReviewStoreAdapter, type ReviewStorePort } from "./persistence/review-store";
-import { createLocalDateProvider } from "./shared/date";
+import { createPopupShellPresenter } from "./presentation/popup-shell";
+import { createLocalDateMath, createLocalDateProvider } from "./shared/date";
+import type { LocalDateKey } from "./shared/types";
 import {
   createAtCoderPageAdapter,
   createAuthSessionGuard,
@@ -9,6 +12,11 @@ import {
 } from "./runtime/shell";
 
 const STORAGE_PROBE_KEY = "ac-revisit:toolchain-probe";
+
+export interface PopupRequest {
+  readonly source: "menu" | "bootstrap";
+  readonly today: LocalDateKey;
+}
 
 export interface UserscriptStorageProbe {
   read(): string | null;
@@ -23,6 +31,8 @@ export interface UserscriptBootstrapResult {
 
 export interface BootstrapUserscriptDependencies {
   readonly reviewStorage?: ReviewStorePort;
+  readonly getToday?: () => LocalDateKey;
+  readonly openPopup?: (input: PopupRequest) => void;
 }
 
 export function createUserscriptStorageProbe(): UserscriptStorageProbe {
@@ -63,24 +73,43 @@ export function bootstrapUserscript(
   }
 
   const localDateProvider = createLocalDateProvider();
+  const getToday = dependencies.getToday ?? (() => localDateProvider.today());
   const reviewStore = createReviewStoreAdapter(
     dependencies.reviewStorage ?? createUserscriptReviewStorage(),
   );
+  const openPopup = dependencies.openPopup ?? createPopupShellPresenter();
+  const dailySuggestionService = createDailySuggestionService({
+    reviewStore,
+    localDateMath: createLocalDateMath(),
+  });
   const reviewMutationService = createReviewMutationService({
     reviewStore,
   });
   const page = pageAdapter.detectPage();
+  const today = getToday();
+  const dailySuggestionResult = dailySuggestionService.ensureTodaySuggestion({
+    today,
+    trigger: "bootstrap",
+  });
+
+  if (dailySuggestionResult.ok && dailySuggestionResult.value.shouldAutoOpenPopup) {
+    openPopup({
+      source: "bootstrap",
+      today,
+    });
+  }
+
   const menuEntryAdapter = createMenuEntryAdapter({
     pageAdapter,
-    getToday: () => localDateProvider.today(),
-    openPopup() {
-      // Popup integration is implemented in later tasks; keep the menu action wired.
+    getToday,
+    openPopup(input) {
+      openPopup(input);
     },
   });
   const mountResult = menuEntryAdapter.ensureEntryMounted();
   const toggleMountCoordinator = createToggleMountCoordinator({
     pageAdapter,
-    getToday: () => localDateProvider.today(),
+    getToday,
     resolveIsRegistered(problemId) {
       const workspace = reviewStore.readWorkspace();
 

@@ -1,61 +1,27 @@
-import assert from "node:assert/strict";
-import { test } from "vitest";
+import { expect, test } from "vitest";
 
 import {
   REVIEW_STORE_KEY,
   createCanonicalReviewWorkspace,
   createReviewStoreAdapter,
 } from "../src/persistence/review-store.ts";
-
-function createStorageDouble({ initialValue = null, failOnRead = false, failOnWrite = false } = {}) {
-  let storedValue = initialValue;
-  const reads = [];
-  const writes = [];
-
-  return {
-    storage: {
-      get(key) {
-        reads.push(key);
-
-        if (failOnRead) {
-          throw new Error("read failed");
-        }
-
-        return storedValue;
-      },
-      set(key, value) {
-        writes.push({ key, value });
-
-        if (failOnWrite) {
-          throw new Error("write failed");
-        }
-
-        storedValue = value;
-      },
-    },
-    reads,
-    writes,
-    getStoredValue() {
-      return storedValue;
-    },
-  };
-}
+import { createMemoryStorageDouble } from "./support/storage-doubles.ts";
 
 test("ReviewStoreAdapter returns the canonical empty workspace when storage is empty", () => {
-  const double = createStorageDouble();
+  const double = createMemoryStorageDouble();
   const adapter = createReviewStoreAdapter(double.storage);
 
   const result = adapter.readWorkspace();
 
-  assert.deepEqual(result, {
+  expect(result).toEqual({
     ok: true,
     value: createCanonicalReviewWorkspace(),
   });
-  assert.deepEqual(double.reads, [REVIEW_STORE_KEY]);
+  expect(double.reads).toEqual([REVIEW_STORE_KEY]);
 });
 
 test("ReviewStoreAdapter falls back to the canonical empty workspace on schema mismatch", () => {
-  const double = createStorageDouble({
+  const double = createMemoryStorageDouble({
     initialValue: JSON.stringify({
       version: 2,
       payload: {
@@ -78,14 +44,14 @@ test("ReviewStoreAdapter falls back to the canonical empty workspace on schema m
 
   const result = adapter.readWorkspace();
 
-  assert.deepEqual(result, {
+  expect(result).toEqual({
     ok: true,
     value: createCanonicalReviewWorkspace(),
   });
 });
 
 test("ReviewStoreAdapter falls back to the canonical empty workspace on logical inconsistency", () => {
-  const double = createStorageDouble({
+  const double = createMemoryStorageDouble({
     initialValue: JSON.stringify({
       version: 1,
       payload: {
@@ -108,26 +74,26 @@ test("ReviewStoreAdapter falls back to the canonical empty workspace on logical 
 
   const result = adapter.readWorkspace();
 
-  assert.deepEqual(result, {
+  expect(result).toEqual({
     ok: true,
     value: createCanonicalReviewWorkspace(),
   });
 });
 
 test("ReviewStoreAdapter returns storage_unavailable when reading fails", () => {
-  const double = createStorageDouble({ failOnRead: true });
+  const double = createMemoryStorageDouble({ failOnRead: true });
   const adapter = createReviewStoreAdapter(double.storage);
 
   const result = adapter.readWorkspace();
 
-  assert.deepEqual(result, {
+  expect(result).toEqual({
     ok: false,
     error: { kind: "storage_unavailable" },
   });
 });
 
 test("ReviewStoreAdapter writes a single normalized snapshot with only the allowed fields", () => {
-  const double = createStorageDouble();
+  const double = createMemoryStorageDouble();
   const adapter = createReviewStoreAdapter(double.storage);
 
   const result = adapter.writeWorkspace({
@@ -152,9 +118,9 @@ test("ReviewStoreAdapter writes a single normalized snapshot with only the allow
       extra: true,
     },
     extraTopLevel: "ignored",
-  });
+  } as unknown as Parameters<typeof adapter.writeWorkspace>[0]);
 
-  assert.deepEqual(result, {
+  expect(result).toEqual({
     ok: true,
     value: {
       reviewItems: [
@@ -176,9 +142,9 @@ test("ReviewStoreAdapter writes a single normalized snapshot with only the allow
       },
     },
   });
-  assert.equal(double.writes.length, 1);
-  assert.equal(double.writes[0].key, REVIEW_STORE_KEY);
-  assert.deepEqual(JSON.parse(double.writes[0].value), {
+  expect(double.writes).toHaveLength(1);
+  expect(double.writes[0].key).toBe(REVIEW_STORE_KEY);
+  expect(JSON.parse(double.writes[0].value)).toEqual({
     version: 1,
     payload: {
       reviewItems: [
@@ -203,7 +169,7 @@ test("ReviewStoreAdapter writes a single normalized snapshot with only the allow
 });
 
 test("ReviewStoreAdapter falls back to the canonical empty workspace when write input is logically inconsistent", () => {
-  const double = createStorageDouble();
+  const double = createMemoryStorageDouble();
   const adapter = createReviewStoreAdapter(double.storage);
 
   const result = adapter.writeWorkspace({
@@ -219,33 +185,33 @@ test("ReviewStoreAdapter falls back to the canonical empty workspace when write 
       status: "incomplete",
       lastDailyEvaluatedOn: "2026-03-02",
     },
-  });
+  } as unknown as Parameters<typeof adapter.writeWorkspace>[0]);
 
-  assert.deepEqual(result, {
+  expect(result).toEqual({
     ok: true,
     value: createCanonicalReviewWorkspace(),
   });
-  assert.deepEqual(JSON.parse(double.writes[0].value), {
+  expect(JSON.parse(double.writes[0].value)).toEqual({
     version: 1,
     payload: createCanonicalReviewWorkspace(),
   });
 });
 
 test("ReviewStoreAdapter returns storage_unavailable when writing fails without retrying", () => {
-  const double = createStorageDouble({ failOnWrite: true });
+  const double = createMemoryStorageDouble({ failOnWrite: true });
   const adapter = createReviewStoreAdapter(double.storage);
 
   const result = adapter.writeWorkspace(createCanonicalReviewWorkspace());
 
-  assert.deepEqual(result, {
+  expect(result).toEqual({
     ok: false,
     error: { kind: "storage_unavailable" },
   });
-  assert.equal(double.writes.length, 1);
+  expect(double.writes).toHaveLength(1);
 });
 
 test("ReviewStoreAdapter uses one shared workspace key without account-specific namespacing", () => {
-  const double = createStorageDouble();
+  const double = createMemoryStorageDouble();
   const adapter = createReviewStoreAdapter(double.storage);
 
   adapter.writeWorkspace({
@@ -264,12 +230,12 @@ test("ReviewStoreAdapter uses one shared workspace key without account-specific 
   });
   adapter.readWorkspace();
 
-  assert.deepEqual(double.writes.map((entry) => entry.key), [REVIEW_STORE_KEY]);
-  assert.deepEqual(double.reads, [REVIEW_STORE_KEY]);
+  expect(double.writes.map((entry) => entry.key)).toEqual([REVIEW_STORE_KEY]);
+  expect(double.reads).toEqual([REVIEW_STORE_KEY]);
 });
 
 test("ReviewStoreAdapter follows last-write-wins when the same browser profile writes twice", () => {
-  const double = createStorageDouble();
+  const double = createMemoryStorageDouble();
   const adapter = createReviewStoreAdapter(double.storage);
 
   const firstResult = adapter.writeWorkspace({
@@ -302,8 +268,8 @@ test("ReviewStoreAdapter follows last-write-wins when the same browser profile w
   });
   const readBack = adapter.readWorkspace();
 
-  assert.equal(firstResult.ok, true);
-  assert.deepEqual(secondResult, {
+  expect(firstResult.ok).toBe(true);
+  expect(secondResult).toEqual({
     ok: true,
     value: {
       reviewItems: [
@@ -320,6 +286,6 @@ test("ReviewStoreAdapter follows last-write-wins when the same browser profile w
       },
     },
   });
-  assert.deepEqual(readBack, secondResult);
-  assert.equal(double.writes.length, 2);
+  expect(readBack).toEqual(secondResult);
+  expect(double.writes).toHaveLength(2);
 });

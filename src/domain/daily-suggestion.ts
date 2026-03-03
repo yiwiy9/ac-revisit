@@ -78,7 +78,9 @@ export function createDailySuggestionService({
 
       return success(
         persistedWorkspace.value,
-        input.trigger === "bootstrap" && nextDailyState.status === "incomplete",
+        input.trigger === "bootstrap" &&
+          persistedWorkspace.value.dailyState.status === "incomplete" &&
+          localDateMath.isSameDay(persistedWorkspace.value.dailyState.lastDailyEvaluatedOn, input.today),
       );
     },
   };

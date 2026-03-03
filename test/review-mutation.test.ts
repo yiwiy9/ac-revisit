@@ -1,53 +1,11 @@
-import assert from "node:assert/strict";
-import { test } from "vitest";
+import { expect, test } from "vitest";
 
 import { createReviewMutationService } from "../src/domain/review-mutation.ts";
-
-function createStoreDouble(workspace, { failOnRead = false, failOnWrite = false } = {}) {
-  let currentWorkspace = workspace;
-  const writes = [];
-
-  return {
-    store: {
-      readWorkspace() {
-        if (failOnRead) {
-          return { ok: false, error: { kind: "storage_unavailable" } };
-        }
-
-        return { ok: true, value: currentWorkspace };
-      },
-      writeWorkspace(nextWorkspace) {
-        writes.push(nextWorkspace);
-
-        if (failOnWrite) {
-          return { ok: false, error: { kind: "storage_unavailable" } };
-        }
-
-        currentWorkspace = nextWorkspace;
-        return { ok: true, value: nextWorkspace };
-      },
-    },
-    writes,
-    getWorkspace() {
-      return currentWorkspace;
-    },
-  };
-}
-
-function createWorkspace(overrides = {}) {
-  return {
-    reviewItems: [],
-    dailyState: {
-      activeProblemId: null,
-      status: "complete",
-      lastDailyEvaluatedOn: null,
-    },
-    ...overrides,
-  };
-}
+import { createWorkspace } from "./support/workspace-fixtures.ts";
+import { createWorkspaceStoreDouble } from "./support/workspace-store-doubles.ts";
 
 test("ReviewMutationService registers an untracked problem with today's date", () => {
-  const double = createStoreDouble(createWorkspace());
+  const double = createWorkspaceStoreDouble(createWorkspace());
   const service = createReviewMutationService({
     reviewStore: double.store,
   });
@@ -58,7 +16,7 @@ test("ReviewMutationService registers an untracked problem with today's date", (
     today: "2026-03-02",
   });
 
-  assert.deepEqual(result, {
+  expect(result).toEqual({
     ok: true,
     value: {
       reviewWorkspace: {
@@ -77,7 +35,7 @@ test("ReviewMutationService registers an untracked problem with today's date", (
       },
     },
   });
-  assert.equal(double.writes.length, 1);
+  expect(double.writes).toHaveLength(1);
 });
 
 test("ReviewMutationService keeps existing state unchanged when re-registering an existing problem", () => {
@@ -90,7 +48,7 @@ test("ReviewMutationService keeps existing state unchanged when re-registering a
       },
     ],
   });
-  const double = createStoreDouble(workspace);
+  const double = createWorkspaceStoreDouble(workspace);
   const service = createReviewMutationService({
     reviewStore: double.store,
   });
@@ -101,17 +59,17 @@ test("ReviewMutationService keeps existing state unchanged when re-registering a
     today: "2026-03-02",
   });
 
-  assert.deepEqual(result, {
+  expect(result).toEqual({
     ok: true,
     value: {
       reviewWorkspace: workspace,
     },
   });
-  assert.equal(double.writes.length, 0);
+  expect(double.writes).toHaveLength(0);
 });
 
 test("ReviewMutationService unregisters today's active suggestion and completes it in one write", () => {
-  const double = createStoreDouble(
+  const double = createWorkspaceStoreDouble(
     createWorkspace({
       reviewItems: [
         {
@@ -141,7 +99,7 @@ test("ReviewMutationService unregisters today's active suggestion and completes 
     today: "2026-03-02",
   });
 
-  assert.deepEqual(result, {
+  expect(result).toEqual({
     ok: true,
     value: {
       reviewWorkspace: {
@@ -160,11 +118,11 @@ test("ReviewMutationService unregisters today's active suggestion and completes 
       },
     },
   });
-  assert.equal(double.writes.length, 1);
+  expect(double.writes).toHaveLength(1);
 });
 
 test("ReviewMutationService removes a stale active suggestion and normalizes the stale daily state", () => {
-  const double = createStoreDouble(
+  const double = createWorkspaceStoreDouble(
     createWorkspace({
       reviewItems: [
         {
@@ -194,7 +152,7 @@ test("ReviewMutationService removes a stale active suggestion and normalizes the
     today: "2026-03-02",
   });
 
-  assert.deepEqual(result, {
+  expect(result).toEqual({
     ok: true,
     value: {
       reviewWorkspace: {
@@ -213,11 +171,11 @@ test("ReviewMutationService removes a stale active suggestion and normalizes the
       },
     },
   });
-  assert.equal(double.writes.length, 1);
+  expect(double.writes).toHaveLength(1);
 });
 
 test("ReviewMutationService completes today's problem by deleting and re-registering it in one write", () => {
-  const double = createStoreDouble(
+  const double = createWorkspaceStoreDouble(
     createWorkspace({
       reviewItems: [
         {
@@ -246,7 +204,7 @@ test("ReviewMutationService completes today's problem by deleting and re-registe
     today: "2026-03-02",
   });
 
-  assert.deepEqual(result, {
+  expect(result).toEqual({
     ok: true,
     value: {
       reviewWorkspace: {
@@ -270,12 +228,12 @@ test("ReviewMutationService completes today's problem by deleting and re-registe
       },
     },
   });
-  assert.equal(double.writes.length, 1);
+  expect(double.writes).toHaveLength(1);
 });
 
 test("ReviewMutationService returns storage_unavailable without partial updates when a write fails", () => {
   const initialWorkspace = createWorkspace();
-  const double = createStoreDouble(initialWorkspace, { failOnWrite: true });
+  const double = createWorkspaceStoreDouble(initialWorkspace, { failOnWrite: true });
   const service = createReviewMutationService({
     reviewStore: double.store,
   });
@@ -286,10 +244,10 @@ test("ReviewMutationService returns storage_unavailable without partial updates 
     today: "2026-03-02",
   });
 
-  assert.deepEqual(result, {
+  expect(result).toEqual({
     ok: false,
     error: { kind: "storage_unavailable" },
   });
-  assert.deepEqual(double.getWorkspace(), initialWorkspace);
-  assert.equal(double.writes.length, 1);
+  expect(double.getWorkspace()).toEqual(initialWorkspace);
+  expect(double.writes).toHaveLength(1);
 });

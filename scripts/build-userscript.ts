@@ -9,7 +9,13 @@ const DEFAULT_MATCH = "https://atcoder.jp/*";
 const DEFAULT_GRANTS = ["GM_getValue", "GM_setValue"];
 const DEFAULT_RUN_AT = "document-end";
 
-function toFilesystemPath(targetPath) {
+interface BuildUserscriptOptions {
+  packageJsonPath?: string | URL;
+  outputPath?: string | URL;
+  entryPointPath?: string | URL;
+}
+
+function toFilesystemPath(targetPath: string | URL): string {
   if (targetPath instanceof URL) {
     return fileURLToPath(targetPath);
   }
@@ -17,7 +23,7 @@ function toFilesystemPath(targetPath) {
   return targetPath;
 }
 
-function buildMetadataBlock({ name, version }) {
+function buildMetadataBlock({ name, version }: { name: string; version: string }): string {
   return [
     "// ==UserScript==",
     `// @name ${name}`,
@@ -36,19 +42,19 @@ export async function buildUserscript({
   packageJsonPath = new URL("../package.json", import.meta.url),
   outputPath = new URL("../dist/ac-revisit.user.js", import.meta.url),
   entryPointPath = new URL("../src/main.ts", import.meta.url),
-} = {}) {
+}: BuildUserscriptOptions = {}): Promise<{ outputPath: string }> {
   const resolvedPackageJsonPath = toFilesystemPath(packageJsonPath);
   const resolvedOutputPath = toFilesystemPath(outputPath);
   const resolvedEntryPointPath = toFilesystemPath(entryPointPath);
   const rawPackageJson = await readFile(resolvedPackageJsonPath, "utf8");
-  const packageJson = JSON.parse(rawPackageJson);
-  const missingFields = [];
+  const packageJson = JSON.parse(rawPackageJson) as { name?: unknown; version?: unknown };
+  const missingFields: string[] = [];
 
-  if (!packageJson.name) {
+  if (typeof packageJson.name !== "string" || packageJson.name.length === 0) {
     missingFields.push("name");
   }
 
-  if (!packageJson.version) {
+  if (typeof packageJson.version !== "string" || packageJson.version.length === 0) {
     missingFields.push("version");
   }
 
@@ -57,6 +63,9 @@ export async function buildUserscript({
       `Missing required package metadata: ${missingFields.join(", ")}`,
     );
   }
+
+  const packageName = packageJson.name as string;
+  const packageVersion = packageJson.version as string;
 
   const bundleResult = await bundle({
     entryPoints: [resolvedEntryPointPath],
@@ -75,8 +84,8 @@ export async function buildUserscript({
   }
 
   const userscript = `${buildMetadataBlock({
-    name: packageJson.name,
-    version: packageJson.version,
+    name: packageName,
+    version: packageVersion,
   })}${runtime}`;
 
   await mkdir(path.dirname(resolvedOutputPath), { recursive: true });

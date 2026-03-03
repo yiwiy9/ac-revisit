@@ -1,20 +1,17 @@
 // @vitest-environment node
-import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { test } from "vitest";
+import { pathToFileURL } from "node:url";
+import { expect, test } from "vitest";
 
-import { buildUserscript } from "../scripts/build-userscript.mjs";
+import { buildUserscript } from "../scripts/build-userscript.ts";
 
 test("package.json exposes the canonical build script for the userscript bundle", async () => {
   const packageJsonPath = new URL("../package.json", import.meta.url);
   const packageJson = JSON.parse(await readFile(packageJsonPath, "utf8"));
 
-  assert.equal(
-    packageJson.scripts.build,
-    "npm run verify && node scripts/build-userscript.mjs",
-  );
+  expect(packageJson.scripts.build).toBe("npm run verify && tsx scripts/build-userscript.ts");
 });
 
 test("buildUserscript emits a single userscript bundle with required metadata", async () => {
@@ -25,24 +22,26 @@ test("buildUserscript emits a single userscript bundle with required metadata", 
 
     await buildUserscript({
       packageJsonPath: new URL("../package.json", import.meta.url),
-      outputPath,
+      outputPath: pathToFileURL(outputPath),
     });
 
     const output = await readFile(outputPath, "utf8");
 
-    assert.match(output, /^\/\/ ==UserScript==/m);
-    assert.match(output, /^\/\/ @name\s+ac-revisit$/m);
-    assert.match(output, /^\/\/ @namespace\s+https:\/\/github\.com\/openai\/ac-revisit$/m);
-    assert.match(output, /^\/\/ @version\s+0\.0\.0$/m);
-    assert.match(output, /^\/\/ @description\s+AtCoder で復習したい問題を静かに提案する userscript$/m);
-    assert.match(output, /^\/\/ @match\s+https:\/\/atcoder\.jp\/\*$/m);
-    assert.match(output, /^\/\/ @grant\s+GM_getValue$/m);
-    assert.match(output, /^\/\/ @grant\s+GM_setValue$/m);
-    assert.match(output, /^\/\/ @run-at\s+document-end$/m);
-    assert.match(output, /^\/\/ ==\/UserScript==/m);
-    assert.match(output, /\(\(\) => \{/);
-    assert.match(output, /ac-revisit 操作/);
-    assert.doesNotMatch(output, /@require/);
+    expect(output).toMatch(/^\/\/ ==UserScript==/m);
+    expect(output).toMatch(/^\/\/ @name\s+ac-revisit$/m);
+    expect(output).toMatch(/^\/\/ @namespace\s+https:\/\/github\.com\/openai\/ac-revisit$/m);
+    expect(output).toMatch(/^\/\/ @version\s+0\.0\.0$/m);
+    expect(output).toMatch(
+      /^\/\/ @description\s+AtCoder で復習したい問題を静かに提案する userscript$/m,
+    );
+    expect(output).toMatch(/^\/\/ @match\s+https:\/\/atcoder\.jp\/\*$/m);
+    expect(output).toMatch(/^\/\/ @grant\s+GM_getValue$/m);
+    expect(output).toMatch(/^\/\/ @grant\s+GM_setValue$/m);
+    expect(output).toMatch(/^\/\/ @run-at\s+document-end$/m);
+    expect(output).toMatch(/^\/\/ ==\/UserScript==/m);
+  expect(output).toMatch(/\(\(\) => \{/);
+    expect(output).toMatch(/ac-revisit 操作/);
+    expect(output).not.toMatch(/@require/);
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
@@ -62,13 +61,12 @@ test("buildUserscript fails when required metadata inputs are missing", async ()
       "utf8",
     );
 
-    await assert.rejects(
+    await expect(
       buildUserscript({
-        packageJsonPath,
-        outputPath: path.join(tempDir, "ac-revisit.user.js"),
+        packageJsonPath: pathToFileURL(packageJsonPath),
+        outputPath: pathToFileURL(path.join(tempDir, "ac-revisit.user.js")),
       }),
-      /Missing required package metadata: version/,
-    );
+    ).rejects.toThrow(/Missing required package metadata: version/);
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }

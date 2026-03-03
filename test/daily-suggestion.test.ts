@@ -1,51 +1,12 @@
-import assert from "node:assert/strict";
-import { test } from "vitest";
+import { expect, test } from "vitest";
 
 import { createDailySuggestionService } from "../src/domain/daily-suggestion.ts";
 import { createLocalDateMath } from "../src/shared/date.ts";
-
-function createStoreDouble(workspace, { failOnRead = false, failOnWrite = false } = {}) {
-  let currentWorkspace = workspace;
-  const writes = [];
-
-  return {
-    store: {
-      readWorkspace() {
-        if (failOnRead) {
-          return { ok: false, error: { kind: "storage_unavailable" } };
-        }
-
-        return { ok: true, value: currentWorkspace };
-      },
-      writeWorkspace(nextWorkspace) {
-        writes.push(nextWorkspace);
-
-        if (failOnWrite) {
-          return { ok: false, error: { kind: "storage_unavailable" } };
-        }
-
-        currentWorkspace = nextWorkspace;
-        return { ok: true, value: nextWorkspace };
-      },
-    },
-    writes,
-  };
-}
-
-function createWorkspace(overrides = {}) {
-  return {
-    reviewItems: [],
-    dailyState: {
-      activeProblemId: null,
-      status: "complete",
-      lastDailyEvaluatedOn: null,
-    },
-    ...overrides,
-  };
-}
+import { createWorkspace } from "./support/workspace-fixtures.ts";
+import { createWorkspaceStoreDouble } from "./support/workspace-store-doubles.ts";
 
 test("DailySuggestionService consumes the first daily evaluation and auto-opens on bootstrap when due candidates exist", () => {
-  const double = createStoreDouble(
+  const double = createWorkspaceStoreDouble(
     createWorkspace({
       reviewItems: [
         {
@@ -77,7 +38,7 @@ test("DailySuggestionService consumes the first daily evaluation and auto-opens 
     trigger: "bootstrap",
   });
 
-  assert.deepEqual(result, {
+  expect(result).toEqual({
     ok: true,
     value: {
       reviewWorkspace: {
@@ -107,7 +68,7 @@ test("DailySuggestionService consumes the first daily evaluation and auto-opens 
       shouldAutoOpenPopup: true,
     },
   });
-  assert.equal(double.writes.length, 1);
+  expect(double.writes).toHaveLength(1);
 });
 
 test("DailySuggestionService is a no-op after the day has already been evaluated", () => {
@@ -125,7 +86,7 @@ test("DailySuggestionService is a no-op after the day has already been evaluated
       lastDailyEvaluatedOn: "2026-03-02",
     },
   });
-  const double = createStoreDouble(workspace);
+  const double = createWorkspaceStoreDouble(workspace);
   const service = createDailySuggestionService({
     reviewStore: double.store,
     localDateMath: createLocalDateMath(),
@@ -137,7 +98,7 @@ test("DailySuggestionService is a no-op after the day has already been evaluated
     trigger: "menu",
   });
 
-  assert.deepEqual(result, {
+  expect(result).toEqual({
     ok: true,
     value: {
       reviewWorkspace: workspace,
@@ -145,11 +106,11 @@ test("DailySuggestionService is a no-op after the day has already been evaluated
       shouldAutoOpenPopup: false,
     },
   });
-  assert.equal(double.writes.length, 0);
+  expect(double.writes).toHaveLength(0);
 });
 
 test("DailySuggestionService clears stale prior-day suggestions when no due candidates exist", () => {
-  const double = createStoreDouble(
+  const double = createWorkspaceStoreDouble(
     createWorkspace({
       reviewItems: [
         {
@@ -176,7 +137,7 @@ test("DailySuggestionService clears stale prior-day suggestions when no due cand
     trigger: "menu",
   });
 
-  assert.deepEqual(result, {
+  expect(result).toEqual({
     ok: true,
     value: {
       reviewWorkspace: {
@@ -201,11 +162,11 @@ test("DailySuggestionService clears stale prior-day suggestions when no due cand
       shouldAutoOpenPopup: false,
     },
   });
-  assert.equal(double.writes.length, 1);
+  expect(double.writes).toHaveLength(1);
 });
 
 test("DailySuggestionService returns storage_unavailable when persisting the first daily evaluation fails", () => {
-  const double = createStoreDouble(
+  const double = createWorkspaceStoreDouble(
     createWorkspace({
       reviewItems: [
         {
@@ -228,11 +189,78 @@ test("DailySuggestionService returns storage_unavailable when persisting the fir
     trigger: "menu",
   });
 
-  assert.deepEqual(result, {
+  expect(result).toEqual({
     ok: false,
     error: {
       kind: "storage_unavailable",
     },
   });
-  assert.equal(double.writes.length, 1);
+  expect(double.writes).toHaveLength(1);
+});
+
+test("DailySuggestionService suppresses bootstrap auto-open when the persisted snapshot does not keep an active suggestion", () => {
+  const double = createWorkspaceStoreDouble(
+    createWorkspace({
+      reviewItems: [
+        {
+          problemId: "abc100/abc100_a",
+          problemTitle: "A - Happy Birthday!",
+          registeredOn: "2026-02-16",
+        },
+      ],
+    }),
+    {
+      persistedWorkspaceOnWrite: createWorkspace({
+        reviewItems: [
+          {
+            problemId: "abc100/abc100_a",
+            problemTitle: "A - Happy Birthday!",
+            registeredOn: "2026-02-16",
+          },
+        ],
+        dailyState: {
+          activeProblemId: null,
+          status: "complete",
+          lastDailyEvaluatedOn: "2026-03-02",
+        },
+      }),
+    },
+  );
+  const service = createDailySuggestionService({
+    reviewStore: double.store,
+    localDateMath: createLocalDateMath(),
+    random: () => 0,
+  });
+
+  const result = service.ensureTodaySuggestion({
+    today: "2026-03-02",
+    trigger: "bootstrap",
+  });
+
+  expect(result).toEqual({
+    ok: true,
+    value: {
+      reviewWorkspace: {
+        reviewItems: [
+          {
+            problemId: "abc100/abc100_a",
+            problemTitle: "A - Happy Birthday!",
+            registeredOn: "2026-02-16",
+          },
+        ],
+        dailyState: {
+          activeProblemId: null,
+          status: "complete",
+          lastDailyEvaluatedOn: "2026-03-02",
+        },
+      },
+      dailyState: {
+        activeProblemId: null,
+        status: "complete",
+        lastDailyEvaluatedOn: "2026-03-02",
+      },
+      shouldAutoOpenPopup: false,
+    },
+  });
+  expect(double.writes).toHaveLength(1);
 });
