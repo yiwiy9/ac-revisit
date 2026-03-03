@@ -270,6 +270,48 @@ test("ReviewMutationService returns storage_unavailable without partial updates 
   expect(double.writes).toHaveLength(1);
 });
 
+test("ReviewMutationService keeps the existing workspace unchanged when the complete transaction write fails", () => {
+  const initialWorkspace = createWorkspace({
+    reviewItems: [
+      {
+        problemId: "abc100/abc100_a",
+        problemTitle: "A - Happy Birthday!",
+        registeredOn: "2026-02-10",
+      },
+      {
+        problemId: "abc100/abc100_b",
+        problemTitle: "B - Ringo's Favorite Numbers",
+        registeredOn: "2026-02-11",
+      },
+    ],
+    dailyState: {
+      activeProblemId: "abc100/abc100_a",
+      status: "incomplete",
+      lastDailyEvaluatedOn: "2026-03-02",
+    },
+  });
+  const double = createWorkspaceStoreDouble(initialWorkspace, { failOnWrite: true });
+  const service = createReviewMutationService({
+    reviewStore: double.store,
+  });
+
+  const result = service.completeTodayProblem({
+    today: "2026-03-02",
+    expectedDailyState: {
+      activeProblemId: "abc100/abc100_a",
+      status: "incomplete",
+      lastDailyEvaluatedOn: "2026-03-02",
+    },
+  });
+
+  expect(result).toEqual({
+    ok: false,
+    error: { kind: "storage_unavailable" },
+  });
+  expect(double.getWorkspace()).toEqual(initialWorkspace);
+  expect(double.writes).toHaveLength(1);
+});
+
 test("ReviewMutationService fetches another due problem only after today's problem is complete", () => {
   const double = createWorkspaceStoreDouble(
     createWorkspace({

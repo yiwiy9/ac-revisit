@@ -80,6 +80,41 @@ test("ReviewStoreAdapter falls back to the canonical empty workspace on logical 
   });
 });
 
+test("ReviewStoreAdapter falls back to the canonical empty workspace when persisted review items contain duplicate problem IDs", () => {
+  const double = createMemoryStorageDouble({
+    initialValue: JSON.stringify({
+      version: 1,
+      payload: {
+        reviewItems: [
+          {
+            problemId: "abc100/abc100_a",
+            problemTitle: "A - Happy Birthday!",
+            registeredOn: "2026-02-01",
+          },
+          {
+            problemId: "abc100/abc100_a",
+            problemTitle: "A - Duplicate",
+            registeredOn: "2026-02-02",
+          },
+        ],
+        dailyState: {
+          activeProblemId: null,
+          status: "complete",
+          lastDailyEvaluatedOn: "2026-03-02",
+        },
+      },
+    }),
+  });
+  const adapter = createReviewStoreAdapter(double.storage);
+
+  const result = adapter.readWorkspace();
+
+  expect(result).toEqual({
+    ok: true,
+    value: createCanonicalReviewWorkspace(),
+  });
+});
+
 test("ReviewStoreAdapter returns storage_unavailable when reading fails", () => {
   const double = createMemoryStorageDouble({ failOnRead: true });
   const adapter = createReviewStoreAdapter(double.storage);
