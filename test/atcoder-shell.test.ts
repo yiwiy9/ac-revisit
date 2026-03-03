@@ -97,10 +97,15 @@ describe("atcoder shell", () => {
 
       const entry = domDocument.querySelector("#ac-revisit-menu-entry");
       const link = domDocument.querySelector("#ac-revisit-menu-entry-link");
+      const icon = link?.querySelector("[data-icon]");
+      const label = link?.querySelector("[data-label]");
 
       expect(entry).toBeTruthy();
       expect(domDocument.querySelectorAll("#ac-revisit-menu-entry")).toHaveLength(1);
-      expect(link?.textContent).toBe("ac-revisit 操作");
+      expect(entry?.tagName).toBe("LI");
+      expect(link?.textContent).toContain("ac-revisit 操作");
+      expect(icon?.textContent).toBe("↺");
+      expect(label?.textContent).toBe("ac-revisit 操作");
 
       link?.dispatchEvent(new domWindow.MouseEvent("click", { bubbles: true, cancelable: true }));
 
@@ -135,7 +140,7 @@ describe("atcoder shell", () => {
 
       expect(topPageMenu).toBeTruthy();
       expect(entry?.parentElement).toBe(topPageMenu);
-      expect(link?.textContent).toBe("ac-revisit 操作");
+      expect(link?.textContent).toContain("ac-revisit 操作");
 
       link?.dispatchEvent(new domWindow.MouseEvent("click", { bubbles: true, cancelable: true }));
 
@@ -163,6 +168,42 @@ describe("atcoder shell", () => {
         error: { kind: "anchor_missing" },
       });
       expect(domDocument.querySelector("#ac-revisit-menu-entry")).toBeNull();
+    });
+
+    test("inserts the persistent menu entry before a settings-like menu item when available", () => {
+      setDocument(
+        `
+          <nav class="navbar">
+            <ul class="navbar-right">
+              <li class="dropdown">
+                <a class="dropdown-toggle">tourist</a>
+                <ul class="dropdown-menu">
+                  <li><a href="/users/tourist">プロフィール</a></li>
+                  <li id="settings-item"><a href="/settings">設定</a></li>
+                  <li><a href="/logout">ログアウト</a></li>
+                </ul>
+              </li>
+            </ul>
+          </nav>
+        `,
+      );
+      const adapter = createAtCoderPageAdapter(domWindow, domDocument);
+      const menuEntry = createMenuEntryAdapter({
+        pageAdapter: adapter,
+        getToday: () => "2026-03-02",
+        openPopup() {},
+      });
+
+      expect(menuEntry.ensureEntryMounted()).toEqual({
+        ok: true,
+        value: { mounted: true },
+      });
+
+      const menuItems = Array.from(domDocument.querySelectorAll(".dropdown-menu > li")).map((item) =>
+        item.id === "ac-revisit-menu-entry" ? "ac-revisit" : item.id || item.textContent?.trim(),
+      );
+
+      expect(menuItems).toEqual(["プロフィール", "ac-revisit", "settings-item", "ログアウト"]);
     });
   });
 
@@ -259,12 +300,13 @@ describe("atcoder shell", () => {
       const button = domDocument.querySelector("#ac-revisit-toggle-button");
 
       expect(button).toBeTruthy();
-      expect(button?.textContent).toBe("復習対象に追加");
+      expect(button?.textContent).toBe("ac-revisit 追加");
       expect(button?.getAttribute("data-state")).toBe("unregistered");
+      expect(button?.className).toContain("btn-sm");
       expect(domDocument.querySelectorAll("#ac-revisit-toggle-button")).toHaveLength(1);
     });
 
-    test("mounts one toggle button on the submission detail heading anchor", () => {
+    test("mounts one toggle button immediately after the submission task link", () => {
       setDocument(
         submissionDetailHtml(),
         "/contests/abc388/submissions/61566375",
@@ -281,10 +323,35 @@ describe("atcoder shell", () => {
       });
 
       const button = domDocument.querySelector("#ac-revisit-toggle-button");
-      const heading = domDocument.querySelector(".col-sm-12 > p > span.h2");
+      const taskLink = domDocument.querySelector(".col-sm-12 table a[href*=\"/tasks/\"]");
+      const heading = domDocument.querySelector(".col-sm-12 p .h2");
 
       expect(button).toBeTruthy();
-      expect(button?.parentElement).toBe(heading?.parentElement);
+      expect(button?.previousElementSibling).toBe(taskLink);
+      expect(heading?.nextElementSibling).not.toBe(button);
+    });
+
+    test("mounts the toggle immediately after the commentary button on problem pages when it exists", () => {
+      setDocument(
+        problemHeadingHtml("D - Coming of Age Celebration", true),
+        "/contests/abc388/tasks/abc388_d",
+      );
+      const adapter = createAtCoderPageAdapter(domWindow, domDocument);
+      const toggleMount = createToggleMountCoordinator({ pageAdapter: adapter });
+
+      expect(toggleMount.mount()).toEqual({
+        ok: true,
+        value: {
+          mounted: true,
+          isRegistered: false,
+        },
+      });
+
+      const button = domDocument.querySelector("#ac-revisit-toggle-button");
+      const commentaryLink = domDocument.querySelector(".col-sm-12 > span.h2 > a.btn");
+
+      expect(button).toBeTruthy();
+      expect(button?.previousElementSibling).toBe(commentaryLink);
     });
 
     test("fails closed when the problem context cannot be resolved", () => {
@@ -368,7 +435,7 @@ describe("atcoder shell", () => {
         },
       ]);
       expect(button?.getAttribute("data-state")).toBe("registered");
-      expect(button?.textContent).toBe("復習対象から解除");
+      expect(button?.textContent).toBe("ac-revisit 解除");
     });
   });
 });

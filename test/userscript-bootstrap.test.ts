@@ -57,11 +57,11 @@ describe("bootstrapUserscript", () => {
       menuEntryMounted: true,
       toggleMounted: true,
     });
-    expect(domDocument.querySelector("#ac-revisit-menu-entry-link")?.textContent).toBe(
+    expect(domDocument.querySelector("#ac-revisit-menu-entry-link")?.textContent).toContain(
       "ac-revisit 操作",
     );
     expect(domDocument.querySelector("#ac-revisit-toggle-button")?.textContent).toBe(
-      "復習対象に追加",
+      "ac-revisit 追加",
     );
   });
 
@@ -74,11 +74,11 @@ describe("bootstrapUserscript", () => {
 
     const button = domDocument.querySelector("#ac-revisit-toggle-button");
     expect(button).toBeTruthy();
-    expect(button?.textContent).toBe("復習対象に追加");
+    expect(button?.textContent).toBe("ac-revisit 追加");
 
     button?.dispatchEvent(new domWindow.MouseEvent("click", { bubbles: true, cancelable: true }));
 
-    expect(button?.textContent).toBe("復習対象から解除");
+    expect(button?.textContent).toBe("ac-revisit 解除");
 
     setDocument(authenticatedProblemPageHtml(), PROBLEM_PAGE_PATH);
 
@@ -86,13 +86,13 @@ describe("bootstrapUserscript", () => {
 
     const rerenderedButton = domDocument.querySelector("#ac-revisit-toggle-button");
     expect(rerenderedButton).toBeTruthy();
-    expect(rerenderedButton?.textContent).toBe("復習対象から解除");
+    expect(rerenderedButton?.textContent).toBe("ac-revisit 解除");
 
     rerenderedButton?.dispatchEvent(
       new domWindow.MouseEvent("click", { bubbles: true, cancelable: true }),
     );
 
-    expect(rerenderedButton?.textContent).toBe("復習対象に追加");
+    expect(rerenderedButton?.textContent).toBe("ac-revisit 追加");
   });
 
   test("mounts the review toggle on authenticated submission detail pages", () => {
@@ -114,7 +114,7 @@ describe("bootstrapUserscript", () => {
       toggleMounted: true,
     });
     expect(domDocument.querySelector("#ac-revisit-toggle-button")?.textContent).toBe(
-      "復習対象に追加",
+      "ac-revisit 追加",
     );
   });
 

@@ -71,3 +71,29 @@ test("buildUserscript fails when required metadata inputs are missing", async ()
     await rm(tempDir, { recursive: true, force: true });
   }
 });
+
+test("buildUserscript fails when package name drifts from the published userscript name", async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), "ac-revisit-build-"));
+
+  try {
+    const packageJsonPath = path.join(tempDir, "package.json");
+
+    await writeFile(
+      packageJsonPath,
+      JSON.stringify({
+        name: "different-name",
+        version: "1.2.3",
+      }),
+      "utf8",
+    );
+
+    await expect(
+      buildUserscript({
+        packageJsonPath: pathToFileURL(packageJsonPath),
+        outputPath: pathToFileURL(path.join(tempDir, "ac-revisit.user.js")),
+      }),
+    ).rejects.toThrow(/Published userscript name must remain ac-revisit/);
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});

@@ -275,3 +275,61 @@ test("DailySuggestionService suppresses bootstrap auto-open when the persisted s
   });
   expect(double.writes).toHaveLength(1);
 });
+
+test("DailySuggestionService never auto-opens from a menu-triggered first evaluation even when a due candidate exists", () => {
+  const double = createWorkspaceStoreDouble(
+    createWorkspace({
+      reviewItems: [
+        {
+          problemId: "abc100/abc100_a",
+          problemTitle: "A - Happy Birthday!",
+          registeredOn: "2026-02-16",
+        },
+      ],
+      dailyState: {
+        activeProblemId: null,
+        status: "complete",
+        lastDailyEvaluatedOn: null,
+      },
+    }),
+  );
+  const service = createDailySuggestionService({
+    reviewStore: double.store,
+    localDateMath: createLocalDateMath(),
+    candidateSelectionService: createCandidateSelectionService({
+      random: () => 0,
+    }),
+  });
+
+  const result = service.ensureTodaySuggestion({
+    today: "2026-03-02",
+    trigger: "menu",
+  });
+
+  expect(result).toEqual({
+    ok: true,
+    value: {
+      reviewWorkspace: {
+        reviewItems: [
+          {
+            problemId: "abc100/abc100_a",
+            problemTitle: "A - Happy Birthday!",
+            registeredOn: "2026-02-16",
+          },
+        ],
+        dailyState: {
+          activeProblemId: "abc100/abc100_a",
+          status: "incomplete",
+          lastDailyEvaluatedOn: "2026-03-02",
+        },
+      },
+      dailyState: {
+        activeProblemId: "abc100/abc100_a",
+        status: "incomplete",
+        lastDailyEvaluatedOn: "2026-03-02",
+      },
+      shouldAutoOpenPopup: false,
+    },
+  });
+  expect(double.writes).toHaveLength(1);
+});

@@ -14,8 +14,12 @@ import {
 const POPUP_ROOT_ID = "ac-revisit-popup-root";
 const POPUP_OVERLAY_ID = "ac-revisit-popup-overlay";
 const POPUP_PANEL_ID = "ac-revisit-popup-panel";
+const POPUP_HEADER_ID = "ac-revisit-popup-header";
+const POPUP_BODY_ID = "ac-revisit-popup-body";
+const POPUP_FOOTER_ID = "ac-revisit-popup-footer";
 const POPUP_TITLE_ID = "ac-revisit-popup-title";
 const POPUP_CLOSE_ID = "ac-revisit-popup-close";
+const POPUP_DISMISS_ID = "ac-revisit-popup-dismiss";
 const POPUP_TODAY_LINK_ID = "ac-revisit-popup-today-link";
 const POPUP_ACTION_ID = "ac-revisit-popup-action";
 const POPUP_TRIGGER_ROLE = "trigger";
@@ -132,36 +136,84 @@ export function createPopupShellPresenter(
 
       const overlay = documentRef.createElement("div");
       overlay.id = POPUP_OVERLAY_ID;
+      overlay.style.position = "fixed";
+      overlay.style.inset = "0";
+      overlay.style.backgroundColor = "rgba(15, 23, 42, 0.35)";
       popup.append(overlay);
 
       const panel = documentRef.createElement("div");
       panel.id = POPUP_PANEL_ID;
+      panel.style.position = "fixed";
+      panel.style.top = "50%";
+      panel.style.left = "50%";
+      panel.style.transform = "translate(-50%, -50%)";
+      panel.style.width = "calc(100% - 2rem)";
+      panel.style.maxWidth = "32rem";
+      panel.style.boxSizing = "border-box";
+      panel.style.padding = "1rem";
+      panel.style.borderRadius = "0.75rem";
+      panel.style.backgroundColor = "#f8fafc";
+      panel.style.color = "#0f172a";
+      panel.style.boxShadow = "0 1.5rem 3rem rgba(15, 23, 42, 0.2)";
       popup.append(panel);
+
+      const header = documentRef.createElement("div");
+      header.id = POPUP_HEADER_ID;
+      header.style.display = "flex";
+      header.style.alignItems = "center";
+      header.style.justifyContent = "space-between";
+      header.style.gap = "0.75rem";
+      panel.append(header);
+
+      const body = documentRef.createElement("div");
+      body.id = POPUP_BODY_ID;
+      body.style.marginTop = "0.75rem";
+      panel.append(body);
+
+      const footer = documentRef.createElement("div");
+      footer.id = POPUP_FOOTER_ID;
+      footer.style.display = "flex";
+      footer.style.justifyContent = "space-between";
+      footer.style.alignItems = "center";
+      footer.style.gap = "0.75rem";
+      footer.style.marginTop = "1rem";
+      panel.append(footer);
 
       const title = documentRef.createElement("h2");
       title.id = POPUP_TITLE_ID;
       title.textContent = "今日の一問";
-      panel.append(title);
+      title.style.margin = "0";
+      header.append(title);
 
       const closeButton = documentRef.createElement("button");
       closeButton.id = POPUP_CLOSE_ID;
       closeButton.type = "button";
       closeButton.textContent = "閉じる";
-      panel.append(closeButton);
+      header.append(closeButton);
 
       const triggerLabel = documentRef.createElement("p");
       triggerLabel.dataset.role = POPUP_TRIGGER_ROLE;
-      panel.append(triggerLabel);
+      triggerLabel.style.margin = "0 0 0.5rem 0";
+      body.append(triggerLabel);
 
       const todayLink = documentRef.createElement("a");
       todayLink.id = POPUP_TODAY_LINK_ID;
       todayLink.setAttribute("href", "#");
-      panel.append(todayLink);
+      todayLink.style.display = "block";
+      todayLink.style.minHeight = "1.5rem";
+      todayLink.style.wordBreak = "break-word";
+      body.append(todayLink);
 
       const actionButton = documentRef.createElement("button");
       actionButton.id = POPUP_ACTION_ID;
       actionButton.type = "button";
-      panel.append(actionButton);
+      footer.append(actionButton);
+
+      const dismissButton = documentRef.createElement("button");
+      dismissButton.id = POPUP_DISMISS_ID;
+      dismissButton.type = "button";
+      dismissButton.textContent = "閉じる";
+      footer.append(dismissButton);
 
       documentRef.body.append(popup);
     }
@@ -173,6 +225,7 @@ export function createPopupShellPresenter(
     popup.setAttribute("aria-labelledby", POPUP_TITLE_ID);
     const overlay = popup.querySelector<HTMLDivElement>(`#${POPUP_OVERLAY_ID}`);
     const closeButton = popup.querySelector<HTMLButtonElement>(`#${POPUP_CLOSE_ID}`);
+    const dismissButton = popup.querySelector<HTMLButtonElement>(`#${POPUP_DISMISS_ID}`);
     const triggerLabel = popup.querySelector<HTMLElement>("[data-role='trigger']");
     const todayLink = popup.querySelector<HTMLAnchorElement>(`#${POPUP_TODAY_LINK_ID}`);
     const actionButton = popup.querySelector<HTMLButtonElement>(`#${POPUP_ACTION_ID}`);
@@ -201,10 +254,16 @@ export function createPopupShellPresenter(
         todayLink.href = toProblemPath(input.reviewWorkspace.dailyState.activeProblemId);
         todayLink.removeAttribute("aria-disabled");
         todayLink.removeAttribute("data-muted");
+        todayLink.style.color = "";
+        todayLink.style.pointerEvents = "";
+        todayLink.style.textDecoration = "";
       } else {
         todayLink.removeAttribute("href");
         todayLink.setAttribute("aria-disabled", "true");
         todayLink.dataset.muted = "true";
+        todayLink.style.color = "#64748b";
+        todayLink.style.pointerEvents = "none";
+        todayLink.style.textDecoration = "none";
       }
     }
 
@@ -221,6 +280,12 @@ export function createPopupShellPresenter(
 
     if (closeButton !== null) {
       closeButton.onclick = () => {
+        dismissPopup(popup);
+      };
+    }
+
+    if (dismissButton !== null) {
+      dismissButton.onclick = () => {
         dismissPopup(popup);
       };
     }
@@ -295,11 +360,19 @@ export function createPopupShellPresenter(
       }
     | { readonly kind: "stale" } {
     const today = interactions.getToday?.() ?? renderedInput.today;
-    const latestSnapshot =
-      interactions.loadReadonly?.({
-        source: currentSource,
-        today,
-      }) ?? renderedInput;
+    const maybeLatestSnapshot = interactions.loadReadonly?.({
+      source: currentSource,
+      today,
+    });
+
+    if (
+      interactions.loadReadonly !== undefined &&
+      (maybeLatestSnapshot === null || maybeLatestSnapshot === undefined)
+    ) {
+      return { kind: "stale" };
+    }
+
+    const latestSnapshot = maybeLatestSnapshot ?? renderedInput;
 
     if (
       interactionSessionValidator.validate({

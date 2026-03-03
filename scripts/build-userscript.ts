@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+const PUBLISHED_USERSCRIPT_NAME = "ac-revisit";
 const DEFAULT_NAMESPACE = "https://github.com/openai/ac-revisit";
 const DEFAULT_DESCRIPTION = "AtCoder で復習したい問題を静かに提案する userscript";
 const DEFAULT_MATCH = "https://atcoder.jp/*";
@@ -66,6 +67,10 @@ export async function buildUserscript({
 
   const packageName = packageJson.name as string;
   const packageVersion = packageJson.version as string;
+
+  if (packageName !== PUBLISHED_USERSCRIPT_NAME) {
+    throw new Error(`Published userscript name must remain ${PUBLISHED_USERSCRIPT_NAME}`);
+  }
 
   const bundleResult = await bundle({
     entryPoints: [resolvedEntryPointPath],

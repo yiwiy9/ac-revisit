@@ -6,7 +6,7 @@ const LEGACY_USER_HANDLE_SELECTOR = ".navbar-right .dropdown > .dropdown-toggle"
 const TOP_PAGE_MYPAGE_SELECTOR = ".header-mypage";
 const TOP_PAGE_MENU_SELECTOR = ".header-mypage_detail .header-mypage_list";
 const PROBLEM_HEADING_SELECTOR = ".col-sm-12 > span.h2";
-const SUBMISSION_HEADING_SELECTOR = ".col-sm-12 > p > span.h2";
+const PROBLEM_COMMENTARY_LINK_SELECTOR = `${PROBLEM_HEADING_SELECTOR} > a.btn`;
 const SUBMISSION_TASK_LINK_SELECTOR = ".col-sm-12 table a[href*=\"/tasks/\"]";
 
 export const MENU_ENTRY_ID = "ac-revisit-menu-entry";
@@ -27,7 +27,11 @@ export type AtCoderPage =
   | { readonly kind: "other"; readonly path: string };
 
 export type DomAnchorResult =
-  | { readonly kind: "found"; readonly element: HTMLElement }
+  | {
+      readonly kind: "found";
+      readonly element: HTMLElement;
+      readonly insertMode: "append" | "afterend";
+    }
   | { readonly kind: "missing" };
 
 export interface HeaderShellSnapshot {
@@ -154,8 +158,8 @@ export function createAtCoderPageAdapter(
           legacyMenuAnchor === null
             ? topPageMenuAnchor === null
               ? { kind: "missing" }
-              : { kind: "found", element: topPageMenuAnchor }
-            : { kind: "found", element: legacyMenuAnchor },
+              : { kind: "found", element: topPageMenuAnchor, insertMode: "append" }
+            : { kind: "found", element: legacyMenuAnchor, insertMode: "append" },
         menuUserHandle:
           readTrimmedText(documentRef, LEGACY_USER_HANDLE_SELECTOR) ??
           readTrimmedText(documentRef, TOP_PAGE_MYPAGE_SELECTOR),
@@ -165,20 +169,32 @@ export function createAtCoderPageAdapter(
       const page = this.detectPage();
 
       if (page.kind === "problem") {
+        const commentaryLink = findElement(documentRef, PROBLEM_COMMENTARY_LINK_SELECTOR);
+
+        if (commentaryLink !== null) {
+          return {
+            kind: "found",
+            element: commentaryLink,
+            insertMode: "afterend",
+          };
+        }
+
         const heading = findElement(documentRef, PROBLEM_HEADING_SELECTOR);
 
-        return heading === null ? { kind: "missing" } : { kind: "found", element: heading };
+        return heading === null
+          ? { kind: "missing" }
+          : { kind: "found", element: heading, insertMode: "append" };
       }
 
-      if (page.kind === "submission_detail") {
-        const heading = findElement(documentRef, SUBMISSION_HEADING_SELECTOR);
-
-        return heading?.parentElement instanceof HTMLElement
-          ? { kind: "found", element: heading.parentElement }
-          : { kind: "missing" };
+      if (page.kind !== "submission_detail") {
+        return { kind: "missing" };
       }
 
-      return { kind: "missing" };
+      const taskLink = findElement(documentRef, SUBMISSION_TASK_LINK_SELECTOR);
+
+      return taskLink === null
+        ? { kind: "missing" }
+        : { kind: "found", element: taskLink, insertMode: "afterend" };
     },
     readProblemContextSource() {
       const page = this.detectPage();
@@ -252,7 +268,7 @@ export function createMenuEntryAdapter(
       const link = documentRef.createElement("a");
       link.id = MENU_ENTRY_LINK_ID;
       link.href = "#";
-      link.textContent = "ac-revisit 操作";
+      appendMenuLinkContents(link, documentRef);
       link.addEventListener("click", (event) => {
         event.preventDefault();
         dependencies.openPopup({
@@ -262,7 +278,7 @@ export function createMenuEntryAdapter(
       });
 
       item.append(link);
-      headerShell.menuAnchor.element.append(item);
+      insertMenuItem(headerShell.menuAnchor.element, item);
 
       return {
         ok: true,
@@ -362,7 +378,6 @@ export function createToggleMountCoordinator(
       const button = documentRef.createElement("button");
       button.type = "button";
       button.id = TOGGLE_BUTTON_ID;
-      button.className = TOGGLE_BUTTON_CLASS;
       syncToggleButton(button, isRegistered, problem.problemId);
       const getToday = dependencies.getToday;
       const onToggle = dependencies.onToggle;
@@ -381,7 +396,7 @@ export function createToggleMountCoordinator(
           }
         });
       }
-      anchor.element.append(button);
+      insertRelative(anchor, button);
 
       return {
         ok: true,
@@ -455,7 +470,54 @@ function syncToggleButton(
   isRegistered: boolean,
   problemId: ProblemId,
 ): void {
+  button.className = [
+    "btn",
+    isRegistered ? "btn-warning" : "btn-default",
+    "btn-sm",
+    TOGGLE_BUTTON_CLASS,
+  ].join(" ");
   button.dataset.state = isRegistered ? "registered" : "unregistered";
   button.dataset.problemId = problemId;
-  button.textContent = isRegistered ? "復習対象から解除" : "復習対象に追加";
+  button.textContent = isRegistered ? "ac-revisit 解除" : "ac-revisit 追加";
+}
+
+function appendMenuLinkContents(link: HTMLAnchorElement, documentRef: Document): void {
+  const icon = documentRef.createElement("span");
+  icon.textContent = "↺";
+  icon.dataset.icon = "true";
+  icon.setAttribute("aria-hidden", "true");
+
+  const spacer = documentRef.createTextNode(" ");
+
+  const label = documentRef.createElement("span");
+  label.textContent = "ac-revisit 操作";
+  label.dataset.label = "true";
+
+  link.append(icon, spacer, label);
+}
+
+function insertMenuItem(menuElement: HTMLElement, item: HTMLLIElement): void {
+  const settingsItem = Array.from(menuElement.querySelectorAll("li")).find((candidate) => {
+    const link = candidate.querySelector("a");
+    const href = link?.getAttribute("href") ?? "";
+    const label = link?.textContent?.trim() ?? "";
+
+    return href.startsWith("/settings") || label.includes("設定");
+  });
+
+  if (settingsItem instanceof HTMLElement) {
+    settingsItem.insertAdjacentElement("beforebegin", item);
+    return;
+  }
+
+  menuElement.append(item);
+}
+
+function insertRelative(anchor: Extract<DomAnchorResult, { kind: "found" }>, element: HTMLElement): void {
+  if (anchor.insertMode === "afterend") {
+    anchor.element.insertAdjacentElement("afterend", element);
+    return;
+  }
+
+  anchor.element.append(element);
 }

@@ -73,8 +73,12 @@ test("PopupShellPresenter renders one shared popup skeleton for both menu and bo
   const root = domDocument.querySelector("#ac-revisit-popup-root");
   const overlay = domDocument.querySelector("#ac-revisit-popup-overlay");
   const panel = domDocument.querySelector("#ac-revisit-popup-panel");
+  const header = domDocument.querySelector("#ac-revisit-popup-header");
+  const body = domDocument.querySelector("#ac-revisit-popup-body");
+  const footer = domDocument.querySelector("#ac-revisit-popup-footer");
   const heading = domDocument.querySelector("#ac-revisit-popup-title");
   const closeButton = domDocument.querySelector("#ac-revisit-popup-close");
+  const footerCloseButton = domDocument.querySelector("#ac-revisit-popup-dismiss");
   const actionButton = domDocument.querySelector("#ac-revisit-popup-action");
 
   expect(root).toBeTruthy();
@@ -83,9 +87,15 @@ test("PopupShellPresenter renders one shared popup skeleton for both menu and bo
   expect(root?.getAttribute("data-source")).toBe("menu");
   expect(overlay).toBeTruthy();
   expect(panel).toBeTruthy();
+  expect(header).toBeTruthy();
+  expect(body).toBeTruthy();
+  expect(footer).toBeTruthy();
   expect(heading?.textContent).toBe("今日の一問");
   expect(closeButton?.textContent).toBe("閉じる");
+  expect(footerCloseButton?.textContent).toBe("閉じる");
   expect(actionButton?.tagName).toBe("BUTTON");
+  expect((panel as HTMLElement | null)?.style.maxWidth).toBe("32rem");
+  expect((panel as HTMLElement | null)?.style.width).toBe("calc(100% - 2rem)");
 
   presentPopup(
     buildSnapshot({
@@ -136,6 +146,12 @@ test("PopupShellPresenter dismisses the popup from the close button, overlay, an
   presentPopup(snapshot);
   domDocument
     .querySelector<HTMLButtonElement>("#ac-revisit-popup-close")
+    ?.dispatchEvent(new domWindow.MouseEvent("click", { bubbles: true, cancelable: true }));
+  expect(domDocument.querySelector("#ac-revisit-popup-root")).toBeNull();
+
+  presentPopup(snapshot);
+  domDocument
+    .querySelector<HTMLButtonElement>("#ac-revisit-popup-dismiss")
     ?.dispatchEvent(new domWindow.MouseEvent("click", { bubbles: true, cancelable: true }));
   expect(domDocument.querySelector("#ac-revisit-popup-root")).toBeNull();
 
@@ -455,6 +471,58 @@ test("PopupShellPresenter runs the primary action only after readonly revalidati
   );
   expect(actionButton?.textContent).toBe("もう一問");
   expect(actionButton?.disabled).toBe(false);
+});
+
+test("PopupShellPresenter blocks popup actions when readonly revalidation cannot load the latest state", () => {
+  clearDocument();
+
+  const loadReadonly = vi.fn(() => null);
+  const refreshPopup = vi.fn();
+  const runPrimaryAction = vi.fn();
+  const presentPopup = createPopupShellPresenter(domDocument, {
+    getToday: () => "2026-03-02",
+    loadReadonly,
+    refreshPopup,
+    runPrimaryAction,
+  });
+
+  presentPopup(
+    buildSnapshot({
+      source: "menu",
+      today: "2026-03-02",
+      reviewItems: [
+        {
+          problemId: "abc100/abc100_a",
+          problemTitle: "A - Happy Birthday!",
+          registeredOn: "2026-02-16",
+        },
+      ],
+      dailyState: {
+        activeProblemId: "abc100/abc100_a",
+        status: "incomplete",
+        lastDailyEvaluatedOn: "2026-03-02",
+      },
+      hasDueCandidates: true,
+    }),
+  );
+
+  const todayLink = domDocument.querySelector<HTMLAnchorElement>("#ac-revisit-popup-today-link");
+  const actionButton = domDocument.querySelector<HTMLButtonElement>("#ac-revisit-popup-action");
+
+  const linkAllowed = todayLink?.dispatchEvent(
+    new domWindow.MouseEvent("click", { bubbles: true, cancelable: true }),
+  );
+  actionButton?.dispatchEvent(
+    new domWindow.MouseEvent("click", { bubbles: true, cancelable: true }),
+  );
+
+  expect(linkAllowed).toBe(false);
+  expect(loadReadonly).toHaveBeenCalledTimes(2);
+  expect(refreshPopup).not.toHaveBeenCalled();
+  expect(runPrimaryAction).not.toHaveBeenCalled();
+  expect(domDocument.querySelector("#ac-revisit-popup-root")?.getAttribute("data-status")).toBe(
+    "incomplete",
+  );
 });
 
 beforeEach(() => {

@@ -15,7 +15,7 @@ test("package.json defines isolated tooling scripts and devDependencies", async 
   expect(packageJson.scripts["typecheck:scripts"]).toBe("tsc -p tsconfig.scripts.json --noEmit");
   expect(packageJson.scripts["typecheck:test"]).toBe("tsc -p tsconfig.test.json --noEmit");
   expect(packageJson.scripts.verify).toBe(
-    "npm run lint && npm run typecheck && npm run typecheck:scripts && npm run typecheck:test",
+    "npm run lint && npm run typecheck && npm run typecheck:scripts && npm run typecheck:test && npm test",
   );
   expect(packageJson.scripts.build).toBe("npm run verify && tsx scripts/build-userscript.ts");
   expect(packageJson.scripts.test).toBe("vitest run");

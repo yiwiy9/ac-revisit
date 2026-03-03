@@ -5,6 +5,8 @@
   - Tampermonkey は `@match`、`@run-at`、`@grant`、`GM_setValue` / `GM_getValue` を公式に提供しており、ユーザースクリプトの注入対象と専用ストレージを明示できる。
   - TypeScript は `noEmit` によりビルドと独立した型チェックを実施でき、ESLint は現行の Getting Started で flat config ベースの初期化を前提としている。
   - ブラウザ内永続化は `localStorage` でも可能だが、Tampermonkey 専用ストレージのほうが userscript の責務境界に合う。
+  - AtCoder 上で自然に見える userscript UI は、既存メニュー項目の DOM 構造と一般的な Bootstrap 風モーダル骨格に寄せると違和感を抑えやすい。
+  - 問題トグルは、問題ページでは見出し内の既存小型ボタン列、提出詳細ページでは提出情報テーブルの問題リンク行に寄せると文脈と調和しやすい。
 
 ## Research Log
 
@@ -67,12 +69,14 @@
   - 問題ページ URL は `/contests/{contestId}/tasks/{taskId}` 形式で、例では `abc388` と `abc388_d` を直接取得できる。
   - 問題タイトル領域は `.col-sm-12 > span.h2` で、既存の「解説」ボタンが同居している。
   - 問題タイトルの表示文字列は `.col-sm-12 > span.h2` のテキストノードから取得でき、同居する「解説」ボタン文字列は除外が必要である。
+  - 「解説」ボタンは `<a class="btn btn-default btn-sm">` として見出し内に並んでおり、同サイズのボタンをその直後へ追加すると視覚的な整合を取りやすい。
+  - コンテスト中など「解説」ボタンが存在しないケースがありうるため、見出し末尾へ直接差し込めるフォールバックが必要である。
 - **Implications**:
   - `AuthSessionGuard` は旧ヘッダー/新ヘッダーの DOM シグナルのみをログイン判定の契約として扱う前提で設計できる。
   - `MenuEntryAdapter` はユーザードロップダウンの `ul.dropdown-menu` に新規 `li > a` を追加する前提で設計できる。
   - `ProblemContextResolver` は URL パスから `contestId` と `taskId` を抽出し、`ProblemId = {contestId}/{taskId}` に正規化できる。
   - `ProblemContextResolver` は `.col-sm-12 > span.h2` から表示用タイトルを抽出できるが、子要素のボタンやリンクを除外してプレーンテキスト化する必要がある。
-  - `ToggleMountCoordinator` は `.col-sm-12 > span.h2` 近傍を問題ページの主要挿入候補にできる。
+  - `ToggleMountCoordinator` は問題ページで `.col-sm-12 > span.h2` をコンテナとし、見出し内の既存「解説」ボタン直後を第一候補、見出し末尾をフォールバックとして扱える。
 
 ### AtCoder submission detail DOM anchors
 - **Context**: 提出詳細ページで対象問題を逆引きし、同一トグル操作を提供するための DOM 根拠が必要だった。
@@ -84,10 +88,12 @@
   - 同じ「問題」行のリンクテキストに `D - Coming of Age Celebration` のような表示用タイトルが含まれる。
   - ページ見出しは `.col-sm-12 > p > span.h2` に `提出 #...` を表示している。
   - ユーザーメニュー DOM は問題ページと同一構造である。
+  - 「問題」行の `td.text-center` に問題リンクが 1 つ置かれており、同じセル内でリンク直後に小型ボタンを並べるのが最も文脈に近い。
+  - 提出番号見出しの横は提出そのものの文脈であり、対象問題を操作するトグルの配置先としては離れている。
 - **Implications**:
   - `ProblemContextResolver` は提出詳細ページで `提出情報` テーブルの「問題」リンクを canonical source として `ProblemId` を解決する。
   - `ProblemContextResolver` は提出詳細ページでは同じリンクの `textContent` をそのまま表示用タイトルとして取得できる。
-  - `ToggleMountCoordinator` は提出詳細ページでは `.col-sm-12 > p > span.h2` 近傍を優先挿入位置にできる。
+  - `ToggleMountCoordinator` は提出詳細ページでは提出情報テーブルの「問題」行にある問題リンク直後を優先挿入位置にできる。
   - `MenuEntryAdapter` と `AuthSessionGuard` は問題ページと同じセレクタ戦略を再利用できる。
 
 ### AtCoder logged out problem page DOM anchors
@@ -126,6 +132,28 @@
   - `AuthSessionGuard` はトップページ新ヘッダーの `header-mypage` / `header-mypage_detail` を主契約として `authenticated` 判定できる。
   - `UserscriptBootstrap` はログイン済みトップページでも `detectPage() === other` により問題トグルを生成しない。
   - `MenuEntryAdapter` はトップページログイン済み時、`header-mypage_detail` 内の `header-mypage_list` に常設リンクを追加対象として扱える。
+
+### AtCoder-adjacent UI composition pattern
+- **Context**: 機能要件を満たすだけでなく、AtCoder 上で違和感の少ないメニュー項目とポップアップの見た目を定義する必要が生じた。
+- **Sources Consulted**:
+  - ユーザー提供の既存 userscript 実装断片（メニュー差し込み・モーダル DOM・スタイル定義）
+- **Findings**:
+  - 既存ユーザーメニューへの差し込みは `li > a` の単純な構造に徹し、周囲のメニュー項目と同じ並びに入れると視覚的な浮きが少ない。
+  - 既存ユーザーメニューでは、設定系項目やその近傍の区切り位置に寄せて差し込むと、「どこにあるべきか」の期待と合いやすい。
+  - 新旧ヘッダーで利用できるアイコン系が異なる場合でも、既存 UI の小さな補助アイコンに合わせるとメニュー項目の密度を崩しにくい。
+  - ポップアップは header / body / footer の 3 分割を持つ一般的なモーダル骨格のほうが、見出し、本文、閉じる/更新操作の役割が明確になる。
+  - 一般的なモーダルでは、ヘッダー右上の close 操作とフッター側の補助操作を併置し、主要アクションは footer 内で補助操作から視覚的に分離する構成が理解しやすい。
+  - ページ側が Bootstrap 風スタイルを持つ環境では、白背景パネル、薄い border、影、半透明 overlay、標準的なボタン階層が周辺 UI と調和しやすい。
+  - 一方で `data-toggle="modal"` のようなページ側 JavaScript への依存は、userscript 側の安定性を下げる可能性がある。
+  - 問題トグルは `btn btn-sm` 相当の小型ボタンへ寄せると、問題ページの解説ボタンや提出詳細ページの情報セル内と視覚的一貫性を持ちやすい。
+  - 状態差は文言だけでなく色で補助できるが、削除用途でも強い警告色は避け、中立な default 系と追加を示す success 系の組み合わせが扱いやすい。
+- **Implications**:
+  - `MenuEntryAdapter` は独自の浮遊 UI を作らず、既存メニューの DOM 構文に寄せた差し込みを優先する。
+  - `MenuEntryAdapter` は既存の設定系メニュー項目に近い挿入位置を優先し、新旧ヘッダーで利用できる最小限の補助アイコンを任意で添えられる。
+  - `PopupPresenter` は見た目だけ一般的なモーダル構成に寄せつつ、開閉と再描画の制御は userscript 側で自前実装する。
+  - `PopupPresenter` は header 右上 close と footer の操作群を持つ一般的なモーダル配置を採り、主要更新操作は footer に集約する。
+  - userscript 固有のスタイルは必要最小限にとどめ、AtCoder 既存 UI と大きく競合しない中立配色・余白・幅制約を採用する。
+  - `ToggleMountCoordinator` は問題ごとの文脈に密着した既存ボタン列や問題リンク行へ差し込み、提出番号見出しのような離れた位置へは出さない。
 
 ## Architecture Pattern Evaluation
 
