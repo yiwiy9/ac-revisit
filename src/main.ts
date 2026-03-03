@@ -1,9 +1,10 @@
+import { createCandidateSelectionService } from "./domain/candidate-selection";
 import { createDailySuggestionService } from "./domain/daily-suggestion";
 import { createReviewMutationService } from "./domain/review-mutation";
 import { createReviewStoreAdapter, type ReviewStorePort } from "./persistence/review-store";
 import { createPopupShellPresenter } from "./presentation/popup-shell";
 import { createLocalDateMath, createLocalDateProvider } from "./shared/date";
-import type { LocalDateKey } from "./shared/types";
+import type { DailySuggestionState, LocalDateKey } from "./shared/types";
 import {
   createAtCoderPageAdapter,
   createAuthSessionGuard,
@@ -16,6 +17,7 @@ const STORAGE_PROBE_KEY = "ac-revisit:toolchain-probe";
 export interface PopupRequest {
   readonly source: "menu" | "bootstrap";
   readonly today: LocalDateKey;
+  readonly dailyState: DailySuggestionState;
 }
 
 export interface UserscriptStorageProbe {
@@ -77,13 +79,19 @@ export function bootstrapUserscript(
   const reviewStore = createReviewStoreAdapter(
     dependencies.reviewStorage ?? createUserscriptReviewStorage(),
   );
-  const openPopup = dependencies.openPopup ?? createPopupShellPresenter();
+  const presentPopup = dependencies.openPopup ?? createPopupShellPresenter();
+  const localDateMath = createLocalDateMath();
+  const candidateSelectionService = createCandidateSelectionService({
+    localDateMath,
+  });
   const dailySuggestionService = createDailySuggestionService({
     reviewStore,
-    localDateMath: createLocalDateMath(),
+    localDateMath,
+    candidateSelectionService,
   });
   const reviewMutationService = createReviewMutationService({
     reviewStore,
+    candidateSelectionService,
   });
   const page = pageAdapter.detectPage();
   const today = getToday();
@@ -93,9 +101,10 @@ export function bootstrapUserscript(
   });
 
   if (dailySuggestionResult.ok && dailySuggestionResult.value.shouldAutoOpenPopup) {
-    openPopup({
+    presentPopup({
       source: "bootstrap",
       today,
+      dailyState: dailySuggestionResult.value.dailyState,
     });
   }
 
@@ -103,7 +112,20 @@ export function bootstrapUserscript(
     pageAdapter,
     getToday,
     openPopup(input) {
-      openPopup(input);
+      const menuSuggestionResult = dailySuggestionService.ensureTodaySuggestion({
+        today: input.today,
+        trigger: "menu",
+      });
+
+      if (!menuSuggestionResult.ok) {
+        return;
+      }
+
+      presentPopup({
+        source: input.source,
+        today: input.today,
+        dailyState: menuSuggestionResult.value.dailyState,
+      });
     },
   });
   const mountResult = menuEntryAdapter.ensureEntryMounted();

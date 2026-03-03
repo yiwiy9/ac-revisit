@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 
+import { createCandidateSelectionService } from "../src/domain/candidate-selection.ts";
 import { createDailySuggestionService } from "../src/domain/daily-suggestion.ts";
 import { createLocalDateMath } from "../src/shared/date.ts";
 import { createWorkspace } from "./support/workspace-fixtures.ts";
@@ -30,7 +31,9 @@ test("DailySuggestionService consumes the first daily evaluation and auto-opens 
   const service = createDailySuggestionService({
     reviewStore: double.store,
     localDateMath: createLocalDateMath(),
-    random: () => 0,
+    candidateSelectionService: createCandidateSelectionService({
+      random: () => 0,
+    }),
   });
 
   const result = service.ensureTodaySuggestion({
@@ -90,7 +93,9 @@ test("DailySuggestionService is a no-op after the day has already been evaluated
   const service = createDailySuggestionService({
     reviewStore: double.store,
     localDateMath: createLocalDateMath(),
-    random: () => 0.99,
+    candidateSelectionService: createCandidateSelectionService({
+      random: () => 0.99,
+    }),
   });
 
   const result = service.ensureTodaySuggestion({
@@ -129,7 +134,9 @@ test("DailySuggestionService clears stale prior-day suggestions when no due cand
   const service = createDailySuggestionService({
     reviewStore: double.store,
     localDateMath: createLocalDateMath(),
-    random: () => 0,
+    candidateSelectionService: createCandidateSelectionService({
+      random: () => 0,
+    }),
   });
 
   const result = service.ensureTodaySuggestion({
@@ -181,7 +188,9 @@ test("DailySuggestionService returns storage_unavailable when persisting the fir
   const service = createDailySuggestionService({
     reviewStore: double.store,
     localDateMath: createLocalDateMath(),
-    random: () => 0,
+    candidateSelectionService: createCandidateSelectionService({
+      random: () => 0,
+    }),
   });
 
   const result = service.ensureTodaySuggestion({
@@ -229,7 +238,9 @@ test("DailySuggestionService suppresses bootstrap auto-open when the persisted s
   const service = createDailySuggestionService({
     reviewStore: double.store,
     localDateMath: createLocalDateMath(),
-    random: () => 0,
+    candidateSelectionService: createCandidateSelectionService({
+      random: () => 0,
+    }),
   });
 
   const result = service.ensureTodaySuggestion({

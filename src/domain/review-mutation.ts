@@ -1,4 +1,13 @@
+import {
+  createCandidateSelectionService,
+  type CandidateSelectionService,
+} from "./candidate-selection";
+import {
+  createInteractionSessionValidator,
+  type InteractionSessionValidator,
+} from "./interaction-session";
 import type {
+  DailySuggestionState,
   LocalDateKey,
   ProblemId,
   ProblemTitle,
@@ -24,6 +33,12 @@ export interface UnregisterProblemInput {
 
 export interface CompleteTodayProblemInput {
   readonly today: LocalDateKey;
+  readonly expectedDailyState: DailySuggestionState;
+}
+
+export interface FetchNextTodayProblemInput {
+  readonly today: LocalDateKey;
+  readonly expectedDailyState: DailySuggestionState;
 }
 
 export interface MutationOutcome {
@@ -44,12 +59,19 @@ export interface ReviewMutationService {
   completeTodayProblem(
     input: CompleteTodayProblemInput,
   ): Result<MutationOutcome, MutationError>;
+  fetchNextTodayProblem(
+    input: FetchNextTodayProblemInput,
+  ): Result<MutationOutcome, MutationError>;
 }
 
 export function createReviewMutationService({
   reviewStore,
+  candidateSelectionService = createCandidateSelectionService(),
+  interactionSessionValidator = createInteractionSessionValidator(),
 }: {
   reviewStore: ReviewMutationStore;
+  candidateSelectionService?: CandidateSelectionService;
+  interactionSessionValidator?: InteractionSessionValidator;
 }): ReviewMutationService {
   return {
     registerProblem(input) {
@@ -117,6 +139,16 @@ export function createReviewMutationService({
         return latestWorkspace;
       }
 
+      if (
+        interactionSessionValidator.validate({
+          expectedDailyState: input.expectedDailyState,
+          actualDailyState: latestWorkspace.value.dailyState,
+          today: input.today,
+        }).kind === "stale"
+      ) {
+        return failure({ kind: "stale_session" });
+      }
+
       const activeProblemId = latestWorkspace.value.dailyState.activeProblemId;
 
       if (
@@ -147,6 +179,45 @@ export function createReviewMutationService({
         dailyState: {
           activeProblemId: null,
           status: "complete",
+          lastDailyEvaluatedOn: latestWorkspace.value.dailyState.lastDailyEvaluatedOn,
+        },
+      });
+    },
+    fetchNextTodayProblem(input) {
+      const latestWorkspace = readLatestWorkspace(reviewStore);
+
+      if (!latestWorkspace.ok) {
+        return latestWorkspace;
+      }
+
+      if (
+        interactionSessionValidator.validate({
+          expectedDailyState: input.expectedDailyState,
+          actualDailyState: latestWorkspace.value.dailyState,
+          today: input.today,
+        }).kind === "stale"
+      ) {
+        return failure({ kind: "stale_session" });
+      }
+
+      if (latestWorkspace.value.dailyState.status !== "complete") {
+        return failure({ kind: "today_problem_incomplete" });
+      }
+
+      const nextCandidate = candidateSelectionService.pickOneCandidate({
+        today: input.today,
+        reviewItems: latestWorkspace.value.reviewItems,
+      });
+
+      if (!nextCandidate.ok) {
+        return failure({ kind: "candidate_unavailable" });
+      }
+
+      return writeWorkspace(reviewStore, {
+        reviewItems: latestWorkspace.value.reviewItems,
+        dailyState: {
+          activeProblemId: nextCandidate.value.problemId,
+          status: "incomplete",
           lastDailyEvaluatedOn: latestWorkspace.value.dailyState.lastDailyEvaluatedOn,
         },
       });

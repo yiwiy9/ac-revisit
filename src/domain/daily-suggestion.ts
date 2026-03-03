@@ -1,8 +1,8 @@
 import type { LocalDateMath } from "../shared/date.ts";
+import type { CandidateSelectionService } from "./candidate-selection";
 import type {
   LocalDateKey,
   Result,
-  ReviewItem,
   ReviewWorkspace,
 } from "../shared/types.ts";
 
@@ -33,11 +33,11 @@ export interface DailySuggestionService {
 export function createDailySuggestionService({
   reviewStore,
   localDateMath,
-  random = Math.random,
+  candidateSelectionService,
 }: {
   reviewStore: DailySuggestionStore;
   localDateMath: LocalDateMath;
-  random?: () => number;
+  candidateSelectionService: CandidateSelectionService;
 }): DailySuggestionService {
   return {
     ensureTodaySuggestion(input) {
@@ -51,21 +51,21 @@ export function createDailySuggestionService({
         return success(latestWorkspace.value, false);
       }
 
-      const dueCandidates = latestWorkspace.value.reviewItems.filter((item) =>
-        localDateMath.isDue(item.registeredOn, input.today),
-      );
-      const nextDailyState =
-        dueCandidates.length === 0
-          ? {
-              activeProblemId: null,
-              status: "complete" as const,
-              lastDailyEvaluatedOn: input.today,
-            }
-          : {
-              activeProblemId: pickCandidate(dueCandidates, random).problemId,
-              status: "incomplete" as const,
-              lastDailyEvaluatedOn: input.today,
-            };
+      const nextCandidate = candidateSelectionService.pickOneCandidate({
+        today: input.today,
+        reviewItems: latestWorkspace.value.reviewItems,
+      });
+      const nextDailyState = nextCandidate.ok
+        ? {
+            activeProblemId: nextCandidate.value.problemId,
+            status: "incomplete" as const,
+            lastDailyEvaluatedOn: input.today,
+          }
+        : {
+            activeProblemId: null,
+            status: "complete" as const,
+            lastDailyEvaluatedOn: input.today,
+          };
       const nextWorkspace: ReviewWorkspace = {
         reviewItems: latestWorkspace.value.reviewItems,
         dailyState: nextDailyState,
@@ -84,12 +84,6 @@ export function createDailySuggestionService({
       );
     },
   };
-}
-
-function pickCandidate(reviewItems: readonly ReviewItem[], random: () => number): ReviewItem {
-  const index = Math.min(reviewItems.length - 1, Math.floor(random() * reviewItems.length));
-
-  return reviewItems[index];
 }
 
 function success(

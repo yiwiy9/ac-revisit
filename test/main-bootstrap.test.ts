@@ -137,6 +137,11 @@ describe("bootstrapUserscript", () => {
       {
         source: "bootstrap",
         today: "2026-03-02",
+        dailyState: {
+          activeProblemId: "abc100/abc100_a",
+          status: "incomplete",
+          lastDailyEvaluatedOn: "2026-03-02",
+        },
       },
     ]);
 
@@ -181,6 +186,59 @@ describe("bootstrapUserscript", () => {
     expect(popup).toBeTruthy();
     expect(popup?.getAttribute("role")).toBe("dialog");
     expect(popup?.getAttribute("data-source")).toBe("bootstrap");
+    expect(popup?.getAttribute("data-status")).toBe("incomplete");
+    expect(popup?.getAttribute("data-active-problem-id")).toBe("abc100/abc100_a");
+    expect(popup?.getAttribute("data-last-daily-evaluated-on")).toBe("2026-03-02");
     expect(title?.textContent).toBe("今日の一問");
+  });
+
+  test("resolves today's suggestion before opening the popup from the menu", () => {
+    const storageDouble = createMemoryStorageDouble();
+    const popupCalls: PopupRequest[] = [];
+
+    seedWorkspace(storageDouble.storage, {
+      reviewItems: [
+        {
+          problemId: "abc100/abc100_a",
+          problemTitle: "A - Happy Birthday!",
+          registeredOn: "2026-02-16",
+        },
+      ],
+      dailyState: {
+        activeProblemId: null,
+        status: "complete",
+        lastDailyEvaluatedOn: null,
+      },
+    });
+    setDocument(authenticatedHeaderHtml(), CONTEST_PAGE_PATH);
+
+    bootstrapUserscript({
+      reviewStorage: storageDouble.storage,
+      getToday: () => "2026-03-02",
+      openPopup(input) {
+        popupCalls.push(input);
+      },
+    });
+
+    popupCalls.length = 0;
+
+    const menuLink = domDocument.querySelector("#ac-revisit-menu-entry-link");
+    expect(menuLink).toBeTruthy();
+
+    menuLink?.dispatchEvent(
+      new domWindow.MouseEvent("click", { bubbles: true, cancelable: true }),
+    );
+
+    expect(popupCalls).toEqual([
+      {
+        source: "menu",
+        today: "2026-03-02",
+        dailyState: {
+          activeProblemId: "abc100/abc100_a",
+          status: "incomplete",
+          lastDailyEvaluatedOn: "2026-03-02",
+        },
+      },
+    ]);
   });
 });
