@@ -1,6 +1,11 @@
 import { beforeEach, expect, test, vi } from "vitest";
 
-import { createPopupShellPresenter } from "../src/presentation/popup-shell.ts";
+import {
+  createPopupShellPresenter,
+  createPopupStateLoader,
+  type PopupStateSnapshot,
+} from "../src/presentation/popup-shell.ts";
+import type { DailySuggestionState, ReviewItem } from "../src/shared/types.ts";
 
 const domWindow = globalThis.window;
 const domDocument = globalThis.document;
@@ -10,27 +15,60 @@ function clearDocument() {
   domWindow.history.replaceState({}, "", "/");
 }
 
+function buildSnapshot(input: {
+  readonly source: "menu" | "bootstrap";
+  readonly today: string;
+  readonly reviewItems: readonly ReviewItem[];
+  readonly dailyState: DailySuggestionState;
+  readonly hasDueCandidates?: boolean;
+}): PopupStateSnapshot {
+  const popupStateLoader = createPopupStateLoader({
+    listDueCandidates() {
+      return input.hasDueCandidates === false ? [] : input.reviewItems;
+    },
+  });
+  const result = popupStateLoader.load({
+    mode: "workspace",
+    source: input.source,
+    today: input.today,
+    reviewWorkspace: {
+      reviewItems: input.reviewItems,
+      dailyState: input.dailyState,
+    },
+  });
+
+  expect(result.ok).toBe(true);
+
+  if (!result.ok) {
+    throw new Error("expected popup state loading to succeed");
+  }
+
+  return result.value;
+}
+
 test("PopupShellPresenter renders one shared popup skeleton for both menu and bootstrap triggers", () => {
   clearDocument();
 
   const presentPopup = createPopupShellPresenter(domDocument);
 
-  presentPopup({
-    source: "menu",
-    today: "2026-03-02",
-    reviewItems: [
-      {
-        problemId: "abc100/abc100_a",
-        problemTitle: "A - Happy Birthday!",
-        registeredOn: "2026-02-16",
+  presentPopup(
+    buildSnapshot({
+      source: "menu",
+      today: "2026-03-02",
+      reviewItems: [
+        {
+          problemId: "abc100/abc100_a",
+          problemTitle: "A - Happy Birthday!",
+          registeredOn: "2026-02-16",
+        },
+      ],
+      dailyState: {
+        activeProblemId: "abc100/abc100_a",
+        status: "incomplete",
+        lastDailyEvaluatedOn: "2026-03-02",
       },
-    ],
-    dailyState: {
-      activeProblemId: "abc100/abc100_a",
-      status: "incomplete",
-      lastDailyEvaluatedOn: "2026-03-02",
-    },
-  });
+    }),
+  );
 
   const root = domDocument.querySelector("#ac-revisit-popup-root");
   const overlay = domDocument.querySelector("#ac-revisit-popup-overlay");
@@ -47,22 +85,24 @@ test("PopupShellPresenter renders one shared popup skeleton for both menu and bo
   expect(heading?.textContent).toBe("今日の一問");
   expect(actionButton?.tagName).toBe("BUTTON");
 
-  presentPopup({
-    source: "bootstrap",
-    today: "2026-03-02",
-    reviewItems: [
-      {
-        problemId: "abc100/abc100_a",
-        problemTitle: "A - Happy Birthday!",
-        registeredOn: "2026-02-16",
+  presentPopup(
+    buildSnapshot({
+      source: "bootstrap",
+      today: "2026-03-02",
+      reviewItems: [
+        {
+          problemId: "abc100/abc100_a",
+          problemTitle: "A - Happy Birthday!",
+          registeredOn: "2026-02-16",
+        },
+      ],
+      dailyState: {
+        activeProblemId: "abc100/abc100_a",
+        status: "incomplete",
+        lastDailyEvaluatedOn: "2026-03-02",
       },
-    ],
-    dailyState: {
-      activeProblemId: "abc100/abc100_a",
-      status: "incomplete",
-      lastDailyEvaluatedOn: "2026-03-02",
-    },
-  });
+    }),
+  );
 
   expect(domDocument.querySelectorAll("#ac-revisit-popup-root")).toHaveLength(1);
   expect(domDocument.querySelector("#ac-revisit-popup-root")?.getAttribute("data-source")).toBe(
@@ -75,23 +115,25 @@ test("PopupShellPresenter enables the today link and labels the action as comple
 
   const presentPopup = createPopupShellPresenter(domDocument);
 
-  presentPopup({
-    source: "menu",
-    today: "2026-03-02",
-    reviewItems: [
-      {
-        problemId: "abc100/abc100_a",
-        problemTitle: "A - Happy Birthday!",
-        registeredOn: "2026-02-16",
+  presentPopup(
+    buildSnapshot({
+      source: "menu",
+      today: "2026-03-02",
+      reviewItems: [
+        {
+          problemId: "abc100/abc100_a",
+          problemTitle: "A - Happy Birthday!",
+          registeredOn: "2026-02-16",
+        },
+      ],
+      dailyState: {
+        activeProblemId: "abc100/abc100_a",
+        status: "incomplete",
+        lastDailyEvaluatedOn: "2026-03-02",
       },
-    ],
-    dailyState: {
-      activeProblemId: "abc100/abc100_a",
-      status: "incomplete",
-      lastDailyEvaluatedOn: "2026-03-02",
-    },
-    hasDueCandidates: true,
-  });
+      hasDueCandidates: true,
+    }),
+  );
 
   const todayLink = domDocument.querySelector<HTMLAnchorElement>("#ac-revisit-popup-today-link");
   const actionButton = domDocument.querySelector<HTMLButtonElement>("#ac-revisit-popup-action");
@@ -108,23 +150,25 @@ test("PopupShellPresenter grays out the today link and disables the next action 
 
   const presentPopup = createPopupShellPresenter(domDocument);
 
-  presentPopup({
-    source: "menu",
-    today: "2026-03-02",
-    reviewItems: [
-      {
-        problemId: "abc100/abc100_a",
-        problemTitle: "A - Happy Birthday!",
-        registeredOn: "2026-02-16",
+  presentPopup(
+    buildSnapshot({
+      source: "menu",
+      today: "2026-03-02",
+      reviewItems: [
+        {
+          problemId: "abc100/abc100_a",
+          problemTitle: "A - Happy Birthday!",
+          registeredOn: "2026-02-16",
+        },
+      ],
+      dailyState: {
+        activeProblemId: "abc100/abc100_a",
+        status: "complete",
+        lastDailyEvaluatedOn: "2026-03-02",
       },
-    ],
-    dailyState: {
-      activeProblemId: "abc100/abc100_a",
-      status: "complete",
-      lastDailyEvaluatedOn: "2026-03-02",
-    },
-    hasDueCandidates: false,
-  });
+      hasDueCandidates: false,
+    }),
+  );
 
   const todayLink = domDocument.querySelector<HTMLAnchorElement>("#ac-revisit-popup-today-link");
   const actionButton = domDocument.querySelector<HTMLButtonElement>("#ac-revisit-popup-action");
@@ -142,23 +186,25 @@ test("PopupShellPresenter enables the next action when today's problem is comple
 
   const presentPopup = createPopupShellPresenter(domDocument);
 
-  presentPopup({
-    source: "menu",
-    today: "2026-03-02",
-    reviewItems: [
-      {
-        problemId: "abc100/abc100_a",
-        problemTitle: "A - Happy Birthday!",
-        registeredOn: "2026-02-16",
+  presentPopup(
+    buildSnapshot({
+      source: "menu",
+      today: "2026-03-02",
+      reviewItems: [
+        {
+          problemId: "abc100/abc100_a",
+          problemTitle: "A - Happy Birthday!",
+          registeredOn: "2026-02-16",
+        },
+      ],
+      dailyState: {
+        activeProblemId: "abc100/abc100_a",
+        status: "complete",
+        lastDailyEvaluatedOn: "2026-03-02",
       },
-    ],
-    dailyState: {
-      activeProblemId: "abc100/abc100_a",
-      status: "complete",
-      lastDailyEvaluatedOn: "2026-03-02",
-    },
-    hasDueCandidates: true,
-  });
+      hasDueCandidates: true,
+    }),
+  );
 
   const todayLink = domDocument.querySelector<HTMLAnchorElement>("#ac-revisit-popup-today-link");
   const actionButton = domDocument.querySelector<HTMLButtonElement>("#ac-revisit-popup-action");
@@ -171,34 +217,8 @@ test("PopupShellPresenter enables the next action when today's problem is comple
   expect(actionButton?.disabled).toBe(false);
 });
 
-test("PopupShellPresenter silently re-renders the popup and blocks stale today-link clicks", () => {
-  clearDocument();
-
-  const refreshPopup = vi.fn(() => ({
-    source: "menu" as const,
-    today: "2026-03-03" as const,
-    reviewItems: [
-      {
-        problemId: "abc100/abc100_b",
-        problemTitle: "B - Ringo's Favorite Numbers",
-        registeredOn: "2026-02-16",
-      },
-    ],
-    dailyState: {
-      activeProblemId: "abc100/abc100_b",
-      status: "incomplete" as const,
-      lastDailyEvaluatedOn: "2026-03-03" as const,
-    },
-    hasDueCandidates: true,
-  }));
-  const runPrimaryAction = vi.fn();
-  const presentPopup = createPopupShellPresenter(domDocument, {
-    getToday: () => "2026-03-03",
-    refreshPopup,
-    runPrimaryAction,
-  });
-
-  presentPopup({
+test("PopupStateLoader reads the latest workspace in readonly mode without requiring popup refresh", () => {
+  const readonlySnapshot = buildSnapshot({
     source: "menu",
     today: "2026-03-02",
     reviewItems: [
@@ -215,6 +235,79 @@ test("PopupShellPresenter silently re-renders the popup and blocks stale today-l
     },
     hasDueCandidates: true,
   });
+  const popupStateLoader = createPopupStateLoader({
+    readWorkspace() {
+      return {
+        ok: true as const,
+        value: readonlySnapshot.reviewWorkspace,
+      };
+    },
+    listDueCandidates(input) {
+      return input.reviewItems;
+    },
+  });
+
+  const result = popupStateLoader.load({
+    mode: "readonly",
+    source: "menu",
+    today: "2026-03-02",
+  });
+
+  expect(result).toEqual({
+    ok: true,
+    value: readonlySnapshot,
+  });
+});
+
+test("PopupShellPresenter silently re-renders the popup and blocks stale today-link clicks", () => {
+  clearDocument();
+
+  const latestSnapshot = buildSnapshot({
+    source: "menu",
+    today: "2026-03-03",
+    reviewItems: [
+      {
+        problemId: "abc100/abc100_b",
+        problemTitle: "B - Ringo's Favorite Numbers",
+        registeredOn: "2026-02-16",
+      },
+    ],
+    dailyState: {
+      activeProblemId: "abc100/abc100_b",
+      status: "incomplete",
+      lastDailyEvaluatedOn: "2026-03-03",
+    },
+    hasDueCandidates: true,
+  });
+  const loadReadonly = vi.fn(() => latestSnapshot);
+  const refreshPopup = vi.fn(() => latestSnapshot);
+  const runPrimaryAction = vi.fn();
+  const presentPopup = createPopupShellPresenter(domDocument, {
+    getToday: () => "2026-03-03",
+    loadReadonly,
+    refreshPopup,
+    runPrimaryAction,
+  });
+
+  presentPopup(
+    buildSnapshot({
+      source: "menu",
+      today: "2026-03-02",
+      reviewItems: [
+        {
+          problemId: "abc100/abc100_a",
+          problemTitle: "A - Happy Birthday!",
+          registeredOn: "2026-02-16",
+        },
+      ],
+      dailyState: {
+        activeProblemId: "abc100/abc100_a",
+        status: "incomplete",
+        lastDailyEvaluatedOn: "2026-03-02",
+      },
+      hasDueCandidates: true,
+    }),
+  );
 
   const todayLink = domDocument.querySelector<HTMLAnchorElement>("#ac-revisit-popup-today-link");
   expect(todayLink).toBeTruthy();
@@ -224,26 +317,30 @@ test("PopupShellPresenter silently re-renders the popup and blocks stale today-l
   );
 
   expect(wasAllowed).toBe(false);
+  expect(loadReadonly).toHaveBeenCalledWith({
+    source: "menu",
+    today: "2026-03-03",
+  });
   expect(refreshPopup).toHaveBeenCalledWith({
     source: "menu",
     today: "2026-03-03",
   });
   expect(runPrimaryAction).not.toHaveBeenCalled();
-  expect(domDocument.querySelector("#ac-revisit-popup-root")?.getAttribute("data-active-problem-id")).toBe(
-    "abc100/abc100_b",
-  );
-  expect(domDocument.querySelector("#ac-revisit-popup-root")?.getAttribute("data-last-daily-evaluated-on")).toBe(
-    "2026-03-03",
-  );
+  expect(
+    domDocument.querySelector("#ac-revisit-popup-root")?.getAttribute("data-active-problem-id"),
+  ).toBe("abc100/abc100_b");
+  expect(
+    domDocument.querySelector("#ac-revisit-popup-root")?.getAttribute("data-last-daily-evaluated-on"),
+  ).toBe("2026-03-03");
   expect(todayLink?.textContent).toBe("B - Ringo's Favorite Numbers");
 });
 
-test("PopupShellPresenter runs the primary action only after the popup state is revalidated", () => {
+test("PopupShellPresenter runs the primary action only after readonly revalidation succeeds", () => {
   clearDocument();
 
-  const latestRequest = {
-    source: "menu" as const,
-    today: "2026-03-02" as const,
+  const latestSnapshot = buildSnapshot({
+    source: "menu",
+    today: "2026-03-02",
     reviewItems: [
       {
         problemId: "abc100/abc100_a",
@@ -253,41 +350,45 @@ test("PopupShellPresenter runs the primary action only after the popup state is 
     ],
     dailyState: {
       activeProblemId: "abc100/abc100_a",
-      status: "incomplete" as const,
-      lastDailyEvaluatedOn: "2026-03-02" as const,
+      status: "incomplete",
+      lastDailyEvaluatedOn: "2026-03-02",
     },
     hasDueCandidates: true,
-  };
-  const refreshPopup = vi.fn(() => latestRequest);
-  const runPrimaryAction = vi.fn(() => ({
-    source: "menu" as const,
-    today: "2026-03-02" as const,
-    reviewItems: [
-      {
-        problemId: "abc100/abc100_a",
-        problemTitle: "A - Happy Birthday!",
-        registeredOn: "2026-03-02",
+  });
+  const loadReadonly = vi.fn(() => latestSnapshot);
+  const refreshPopup = vi.fn();
+  const runPrimaryAction = vi.fn(() =>
+    buildSnapshot({
+      source: "menu",
+      today: "2026-03-02",
+      reviewItems: [
+        {
+          problemId: "abc100/abc100_a",
+          problemTitle: "A - Happy Birthday!",
+          registeredOn: "2026-03-02",
+        },
+        {
+          problemId: "abc100/abc100_b",
+          problemTitle: "B - Ringo's Favorite Numbers",
+          registeredOn: "2026-02-10",
+        },
+      ],
+      dailyState: {
+        activeProblemId: null,
+        status: "complete",
+        lastDailyEvaluatedOn: "2026-03-02",
       },
-      {
-        problemId: "abc100/abc100_b",
-        problemTitle: "B - Ringo's Favorite Numbers",
-        registeredOn: "2026-02-10",
-      },
-    ],
-    dailyState: {
-      activeProblemId: null,
-      status: "complete" as const,
-      lastDailyEvaluatedOn: "2026-03-02" as const,
-    },
-    hasDueCandidates: true,
-  }));
+      hasDueCandidates: true,
+    }),
+  );
   const presentPopup = createPopupShellPresenter(domDocument, {
     getToday: () => "2026-03-02",
+    loadReadonly,
     refreshPopup,
     runPrimaryAction,
   });
 
-  presentPopup(latestRequest);
+  presentPopup(latestSnapshot);
 
   const actionButton = domDocument.querySelector<HTMLButtonElement>("#ac-revisit-popup-action");
   expect(actionButton).toBeTruthy();
@@ -296,15 +397,16 @@ test("PopupShellPresenter runs the primary action only after the popup state is 
     new domWindow.MouseEvent("click", { bubbles: true, cancelable: true }),
   );
 
-  expect(refreshPopup).toHaveBeenCalledWith({
+  expect(loadReadonly).toHaveBeenCalledWith({
     source: "menu",
     today: "2026-03-02",
   });
+  expect(refreshPopup).not.toHaveBeenCalled();
   expect(runPrimaryAction).toHaveBeenCalledWith({
     action: "complete",
     source: "menu",
     today: "2026-03-02",
-    expectedDailyState: latestRequest.dailyState,
+    expectedDailyState: latestSnapshot.reviewWorkspace.dailyState,
   });
   expect(domDocument.querySelector("#ac-revisit-popup-root")?.getAttribute("data-status")).toBe(
     "complete",

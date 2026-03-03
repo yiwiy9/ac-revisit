@@ -3,9 +3,10 @@ import { createDailySuggestionService } from "./domain/daily-suggestion";
 import { createReviewMutationService } from "./domain/review-mutation";
 import { createReviewStoreAdapter, type ReviewStorePort } from "./persistence/review-store";
 import {
+  createPopupStateLoader,
   createPopupShellPresenter,
   type PopupShellActionInput,
-  type PopupShellRequest,
+  type PopupStateSnapshot,
 } from "./presentation/popup-shell";
 import { createLocalDateMath, createLocalDateProvider } from "./shared/date";
 import type { DailySuggestionState, LocalDateKey, ReviewWorkspace } from "./shared/types";
@@ -17,6 +18,16 @@ import {
 } from "./runtime/shell";
 
 const STORAGE_PROBE_KEY = "ac-revisit:toolchain-probe";
+
+export type DiagnosticCode = "anchor_missing" | "problem_unresolvable" | "storage_unavailable";
+
+export interface DiagnosticEvent {
+  readonly code: DiagnosticCode;
+  readonly component: string;
+  readonly operation: string;
+}
+
+export type DiagnosticSink = (event: DiagnosticEvent) => void;
 
 export interface PopupRequest {
   readonly source: "menu" | "bootstrap";
@@ -41,6 +52,7 @@ export interface BootstrapUserscriptDependencies {
   readonly reviewStorage?: ReviewStorePort;
   readonly getToday?: () => LocalDateKey;
   readonly openPopup?: (input: PopupRequest) => void;
+  readonly diagnosticSink?: DiagnosticSink;
 }
 
 export function createUserscriptStorageProbe(): UserscriptStorageProbe {
@@ -68,6 +80,7 @@ function createUserscriptReviewStorage(): ReviewStorePort {
 export function bootstrapUserscript(
   dependencies: BootstrapUserscriptDependencies = {},
 ): UserscriptBootstrapResult {
+  const recordDiagnostic = createDiagnosticRecorder(dependencies.diagnosticSink);
   const pageAdapter = createAtCoderPageAdapter();
   const sessionGuard = createAuthSessionGuard(pageAdapter);
   const session = sessionGuard.resolveSession();
@@ -100,47 +113,82 @@ export function bootstrapUserscript(
     reviewStore,
     candidateSelectionService,
   });
+  const popupStateLoader = createPopupStateLoader({
+    readWorkspace() {
+      return reviewStore.readWorkspace();
+    },
+    listDueCandidates(input) {
+      return candidateSelectionService.listDueCandidates(input);
+    },
+  });
 
-  function toPopupShellRequest(input: {
+  function loadWorkspacePopupState(input: {
     readonly source: "menu" | "bootstrap";
     readonly today: LocalDateKey;
     readonly reviewWorkspace: ReviewWorkspace;
-  }): PopupShellRequest {
-    const dueCandidates = candidateSelectionService.listDueCandidates({
-      today: input.today,
-      reviewItems: input.reviewWorkspace.reviewItems,
-    });
-
-    return {
+  }): PopupStateSnapshot {
+    const result = popupStateLoader.load({
+      mode: "workspace",
       source: input.source,
       today: input.today,
-      reviewItems: input.reviewWorkspace.reviewItems,
-      dailyState: input.reviewWorkspace.dailyState,
-      hasDueCandidates: dueCandidates.length > 0,
-    };
+      reviewWorkspace: input.reviewWorkspace,
+    });
+
+    if (!result.ok) {
+      throw new Error("workspace popup state loading must not fail");
+    }
+
+    return result.value;
   }
 
   function refreshPopupState(input: {
     readonly source: "menu" | "bootstrap";
     readonly today: LocalDateKey;
-  }): PopupShellRequest | null {
+  }): PopupStateSnapshot | null {
     const result = dailySuggestionService.ensureTodaySuggestion({
       today: input.today,
       trigger: "menu",
     });
 
     if (!result.ok) {
+      recordDiagnostic({
+        code: result.error.kind,
+        component: "DailySuggestionService",
+        operation: "popup_refresh",
+      });
       return null;
     }
 
-    return toPopupShellRequest({
+    return loadWorkspacePopupState({
       source: input.source,
       today: input.today,
       reviewWorkspace: result.value.reviewWorkspace,
     });
   }
 
-  function runPopupPrimaryAction(input: PopupShellActionInput): PopupShellRequest | null {
+  function loadReadonlyPopupState(input: {
+    readonly source: "menu" | "bootstrap";
+    readonly today: LocalDateKey;
+  }): PopupStateSnapshot | null {
+    const result = popupStateLoader.load({
+      mode: "readonly",
+      source: input.source,
+      today: input.today,
+    });
+
+    if (!result.ok) {
+      recordDiagnostic({
+        code: result.error.kind,
+        component: "PopupStateLoader",
+        operation: "popup_readonly_load",
+      });
+      return null;
+    }
+
+    return result.value;
+  }
+
+  function runPopupPrimaryAction(input: PopupShellActionInput): PopupStateSnapshot | null {
     const result =
       input.action === "complete"
         ? reviewMutationService.completeTodayProblem({
@@ -153,15 +201,21 @@ export function bootstrapUserscript(
           });
 
     if (!result.ok) {
-      return result.error.kind === "stale_session"
-        ? refreshPopupState({
-            source: input.source,
-            today: input.today,
-          })
-        : null;
+      if (result.error.kind === "storage_unavailable") {
+        recordDiagnostic({
+          code: result.error.kind,
+          component: "ReviewMutationService",
+          operation: "popup_primary_action",
+        });
+      }
+
+      return refreshPopupState({
+        source: input.source,
+        today: input.today,
+      });
     }
 
-    return toPopupShellRequest({
+    return loadWorkspacePopupState({
       source: input.source,
       today: input.today,
       reviewWorkspace: result.value.reviewWorkspace,
@@ -172,6 +226,7 @@ export function bootstrapUserscript(
     dependencies.openPopup === undefined
       ? createPopupShellPresenter(document, {
           getToday,
+          loadReadonly: loadReadonlyPopupState,
           refreshPopup: refreshPopupState,
           runPrimaryAction: runPopupPrimaryAction,
         })
@@ -191,7 +246,7 @@ export function bootstrapUserscript(
       return;
     }
 
-    defaultPopupPresenter(toPopupShellRequest(input));
+    defaultPopupPresenter(loadWorkspacePopupState(input));
   }
 
   const menuEntryAdapter = createMenuEntryAdapter({
@@ -204,6 +259,11 @@ export function bootstrapUserscript(
       });
 
       if (!menuSuggestionResult.ok) {
+        recordDiagnostic({
+          code: menuSuggestionResult.error.kind,
+          component: "DailySuggestionService",
+          operation: "menu_open_popup",
+        });
         return;
       }
 
@@ -215,11 +275,28 @@ export function bootstrapUserscript(
     },
   });
   const mountResult = menuEntryAdapter.ensureEntryMounted();
+
+  if (!mountResult.ok) {
+    recordDiagnostic({
+      code: mountResult.error.kind,
+      component: "MenuEntryAdapter",
+      operation: "startup_menu_mount",
+    });
+  }
+
   const toggleMountCoordinator = createToggleMountCoordinator({
     pageAdapter,
     getToday,
     resolveIsRegistered(problemId) {
       const workspace = reviewStore.readWorkspace();
+
+      if (!workspace.ok) {
+        recordDiagnostic({
+          code: workspace.error.kind,
+          component: "ReviewStoreAdapter",
+          operation: "startup_toggle_state_load",
+        });
+      }
 
       return (
         workspace.ok && workspace.value.reviewItems.some((item) => item.problemId === problemId)
@@ -238,6 +315,14 @@ export function bootstrapUserscript(
           });
 
       if (!result.ok) {
+        if (result.error.kind === "storage_unavailable") {
+          recordDiagnostic({
+            code: result.error.kind,
+            component: "ReviewMutationService",
+            operation: "toggle_click",
+          });
+        }
+
         return input.isRegistered;
       }
 
@@ -251,11 +336,27 @@ export function bootstrapUserscript(
       ? toggleMountCoordinator.mount()
       : null;
 
+  if (toggleMountResult !== null && !toggleMountResult.ok) {
+    recordDiagnostic({
+      code: toggleMountResult.error.kind,
+      component: "ToggleMountCoordinator",
+      operation: "startup_toggle_mount",
+    });
+  }
+
   const today = getToday();
   const dailySuggestionResult = dailySuggestionService.ensureTodaySuggestion({
     today,
     trigger: "bootstrap",
   });
+
+  if (!dailySuggestionResult.ok) {
+    recordDiagnostic({
+      code: dailySuggestionResult.error.kind,
+      component: "DailySuggestionService",
+      operation: "startup_daily_suggestion",
+    });
+  }
 
   if (dailySuggestionResult.ok && dailySuggestionResult.value.shouldAutoOpenPopup) {
     presentPopup({
@@ -273,3 +374,9 @@ export function bootstrapUserscript(
 }
 
 bootstrapUserscript();
+
+function createDiagnosticRecorder(diagnosticSink?: DiagnosticSink): DiagnosticSink {
+  return (event) => {
+    diagnosticSink?.(event);
+  };
+}

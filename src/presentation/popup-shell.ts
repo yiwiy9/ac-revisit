@@ -1,6 +1,15 @@
-import type { DailySuggestionState, LocalDateKey, ReviewItem } from "../shared/types";
 import { createInteractionSessionValidator } from "../domain/interaction-session";
-import { createPopupViewModelFactory } from "./popup-view-model";
+import type {
+  DailySuggestionState,
+  LocalDateKey,
+  Result,
+  ReviewItem,
+  ReviewWorkspace,
+} from "../shared/types";
+import {
+  createPopupViewModelFactory,
+  type PopupViewModel,
+} from "./popup-view-model";
 
 const POPUP_ROOT_ID = "ac-revisit-popup-root";
 const POPUP_OVERLAY_ID = "ac-revisit-popup-overlay";
@@ -10,15 +19,33 @@ const POPUP_TODAY_LINK_ID = "ac-revisit-popup-today-link";
 const POPUP_ACTION_ID = "ac-revisit-popup-action";
 const POPUP_TRIGGER_ROLE = "trigger";
 
-export interface PopupShellRequest {
+export interface PopupStateSnapshot {
   readonly source: "menu" | "bootstrap";
   readonly today: LocalDateKey;
-  readonly reviewItems: readonly ReviewItem[];
-  readonly dailyState: DailySuggestionState;
-  readonly hasDueCandidates?: boolean;
+  readonly reviewWorkspace: ReviewWorkspace;
+  readonly viewModel: PopupViewModel;
 }
 
-export type PopupShellPresenter = (input: PopupShellRequest) => void;
+export type PopupShellPresenter = (input: PopupStateSnapshot) => void;
+
+export type PopupStateLoadError = { readonly kind: "storage_unavailable" };
+
+export type PopupStateLoadInput =
+  | {
+      readonly mode: "readonly";
+      readonly source: "menu" | "bootstrap";
+      readonly today: LocalDateKey;
+    }
+  | {
+      readonly mode: "workspace";
+      readonly source: "menu" | "bootstrap";
+      readonly today: LocalDateKey;
+      readonly reviewWorkspace: ReviewWorkspace;
+    };
+
+export interface PopupStateLoader {
+  load(input: PopupStateLoadInput): Result<PopupStateSnapshot, PopupStateLoadError>;
+}
 
 export interface PopupShellRefreshInput {
   readonly source: "menu" | "bootstrap";
@@ -32,15 +59,63 @@ export interface PopupShellActionInput extends PopupShellRefreshInput {
 
 export interface PopupShellInteractions {
   readonly getToday?: () => LocalDateKey;
-  readonly refreshPopup?: (input: PopupShellRefreshInput) => PopupShellRequest | null;
-  readonly runPrimaryAction?: (input: PopupShellActionInput) => PopupShellRequest | null;
+  readonly loadReadonly?: (input: PopupShellRefreshInput) => PopupStateSnapshot | null;
+  readonly refreshPopup?: (input: PopupShellRefreshInput) => PopupStateSnapshot | null;
+  readonly runPrimaryAction?: (input: PopupShellActionInput) => PopupStateSnapshot | null;
+}
+
+export interface PopupStateLoaderDependencies {
+  readonly readWorkspace?: () => Result<ReviewWorkspace, PopupStateLoadError>;
+  readonly listDueCandidates: (input: {
+    readonly today: LocalDateKey;
+    readonly reviewItems: readonly ReviewItem[];
+  }) => readonly ReviewItem[];
+}
+
+export function createPopupStateLoader(
+  dependencies: PopupStateLoaderDependencies,
+): PopupStateLoader {
+  const popupViewModelFactory = createPopupViewModelFactory();
+
+  return {
+    load(input) {
+      const workspaceResult =
+        input.mode === "workspace"
+          ? success(input.reviewWorkspace)
+          : dependencies.readWorkspace?.() ??
+            failure({
+              kind: "storage_unavailable",
+            });
+
+      if (!workspaceResult.ok) {
+        return workspaceResult;
+      }
+
+      const reviewWorkspace = workspaceResult.value;
+      const hasDueCandidates =
+        dependencies.listDueCandidates({
+          today: input.today,
+          reviewItems: reviewWorkspace.reviewItems,
+        }).length > 0;
+
+      return success({
+        source: input.source,
+        today: input.today,
+        reviewWorkspace,
+        viewModel: popupViewModelFactory.build({
+          reviewItems: reviewWorkspace.reviewItems,
+          dailyState: reviewWorkspace.dailyState,
+          hasDueCandidates,
+        }),
+      });
+    },
+  };
 }
 
 export function createPopupShellPresenter(
   documentRef: Document = document,
   interactions: PopupShellInteractions = {},
 ): PopupShellPresenter {
-  const popupViewModelFactory = createPopupViewModelFactory();
   const interactionSessionValidator = createInteractionSessionValidator();
 
   const presentPopup: PopupShellPresenter = (input) => {
@@ -83,9 +158,9 @@ export function createPopupShellPresenter(
     }
 
     popup.dataset.source = input.source;
-    popup.dataset.status = input.dailyState.status;
-    popup.dataset.activeProblemId = input.dailyState.activeProblemId ?? "";
-    popup.dataset.lastDailyEvaluatedOn = input.dailyState.lastDailyEvaluatedOn ?? "";
+    popup.dataset.status = input.reviewWorkspace.dailyState.status;
+    popup.dataset.activeProblemId = input.reviewWorkspace.dailyState.activeProblemId ?? "";
+    popup.dataset.lastDailyEvaluatedOn = input.reviewWorkspace.dailyState.lastDailyEvaluatedOn ?? "";
     popup.setAttribute("aria-labelledby", POPUP_TITLE_ID);
     const triggerLabel = popup.querySelector<HTMLElement>("[data-role='trigger']");
     const todayLink = popup.querySelector<HTMLAnchorElement>(`#${POPUP_TODAY_LINK_ID}`);
@@ -98,17 +173,14 @@ export function createPopupShellPresenter(
           : `${input.today} のメニュー操作`;
     }
 
-    const viewModel = popupViewModelFactory.build({
-      reviewItems: input.reviewItems,
-      dailyState: input.dailyState,
-      hasDueCandidates: input.hasDueCandidates ?? false,
-    });
-
     if (todayLink !== null) {
-      todayLink.textContent = viewModel.todayLinkLabel;
+      todayLink.textContent = input.viewModel.todayLinkLabel;
 
-      if (viewModel.todayLink.enabled && input.dailyState.activeProblemId !== null) {
-        todayLink.href = toProblemPath(input.dailyState.activeProblemId);
+      if (
+        input.viewModel.todayLink.enabled &&
+        input.reviewWorkspace.dailyState.activeProblemId !== null
+      ) {
+        todayLink.href = toProblemPath(input.reviewWorkspace.dailyState.activeProblemId);
         todayLink.removeAttribute("aria-disabled");
         todayLink.removeAttribute("data-muted");
       } else {
@@ -119,8 +191,8 @@ export function createPopupShellPresenter(
     }
 
     if (actionButton !== null) {
-      actionButton.textContent = viewModel.primaryActionLabel;
-      actionButton.disabled = !viewModel.primaryAction.enabled;
+      actionButton.textContent = input.viewModel.primaryActionLabel;
+      actionButton.disabled = !input.viewModel.primaryAction.enabled;
     }
 
     if (todayLink !== null) {
@@ -140,7 +212,7 @@ export function createPopupShellPresenter(
       actionButton.onclick = (event) => {
         event.preventDefault();
 
-        if (!viewModel.primaryAction.enabled) {
+        if (!input.viewModel.primaryAction.enabled) {
           return;
         }
 
@@ -154,10 +226,10 @@ export function createPopupShellPresenter(
         }
 
         const nextPopup = interactions.runPrimaryAction?.({
-          action: viewModel.primaryActionKind,
+          action: input.viewModel.primaryActionKind,
           source: interactionState.source,
           today: interactionState.today,
-          expectedDailyState: interactionState.currentInput.dailyState,
+          expectedDailyState: interactionState.currentSnapshot.reviewWorkspace.dailyState,
         });
 
         if (nextPopup !== null && nextPopup !== undefined) {
@@ -173,32 +245,37 @@ export function createPopupShellPresenter(
     renderedInput,
     currentSource,
   }: {
-    readonly renderedInput: PopupShellRequest;
+    readonly renderedInput: PopupStateSnapshot;
     readonly currentSource: "menu" | "bootstrap";
   }):
     | {
         readonly kind: "valid";
-        readonly currentInput: PopupShellRequest;
+        readonly currentSnapshot: PopupStateSnapshot;
         readonly source: "menu" | "bootstrap";
         readonly today: LocalDateKey;
       }
     | { readonly kind: "stale" } {
     const today = interactions.getToday?.() ?? renderedInput.today;
-    const latestInput =
-      interactions.refreshPopup?.({
+    const latestSnapshot =
+      interactions.loadReadonly?.({
         source: currentSource,
         today,
       }) ?? renderedInput;
 
     if (
       interactionSessionValidator.validate({
-        expectedDailyState: renderedInput.dailyState,
-        actualDailyState: latestInput.dailyState,
+        expectedDailyState: renderedInput.reviewWorkspace.dailyState,
+        actualDailyState: latestSnapshot.reviewWorkspace.dailyState,
         today,
       }).kind === "stale"
     ) {
-      if (latestInput !== renderedInput) {
-        presentPopup(latestInput);
+      const refreshedSnapshot = interactions.refreshPopup?.({
+        source: currentSource,
+        today,
+      });
+
+      if (refreshedSnapshot !== null && refreshedSnapshot !== undefined) {
+        presentPopup(refreshedSnapshot);
       }
 
       return { kind: "stale" };
@@ -206,11 +283,25 @@ export function createPopupShellPresenter(
 
     return {
       kind: "valid",
-      currentInput: latestInput,
+      currentSnapshot: latestSnapshot,
       source: currentSource,
       today,
     };
   }
+}
+
+function success<Value>(value: Value): Result<Value, PopupStateLoadError> {
+  return {
+    ok: true,
+    value,
+  };
+}
+
+function failure(error: PopupStateLoadError): Result<never, PopupStateLoadError> {
+  return {
+    ok: false,
+    error,
+  };
 }
 
 function toProblemPath(problemId: string): string {

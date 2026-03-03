@@ -299,4 +299,119 @@ describe("bootstrapUserscript", () => {
       },
     ]);
   });
+
+  test("records fail-closed startup diagnostics for unresolved toggle mount paths", () => {
+    const storageDouble = createMemoryStorageDouble();
+    const diagnostics: Array<{
+      code: string;
+      component: string;
+      operation: string;
+    }> = [];
+
+    setDocument(
+      `
+        ${authenticatedHeaderHtml()}
+        <div class="col-sm-12">
+          <div>A - Happy Birthday!</div>
+        </div>
+      `,
+      PROBLEM_PAGE_PATH,
+    );
+
+    const result = bootstrapUserscript({
+      reviewStorage: storageDouble.storage,
+      diagnosticSink(event) {
+        diagnostics.push(event);
+      },
+    });
+
+    expect(result).toEqual({
+      session: "authenticated",
+      menuEntryMounted: true,
+      toggleMounted: false,
+    });
+    expect(diagnostics).toEqual([
+      {
+        code: "anchor_missing",
+        component: "ToggleMountCoordinator",
+        operation: "startup_toggle_mount",
+      },
+    ]);
+  });
+
+  test("records fail-closed startup diagnostics when the problem context is unresolvable", () => {
+    const storageDouble = createMemoryStorageDouble();
+    const diagnostics: Array<{
+      code: string;
+      component: string;
+      operation: string;
+    }> = [];
+
+    setDocument(
+      `
+        ${authenticatedHeaderHtml()}
+        <div class="col-sm-12">
+          <span class="h2"></span>
+        </div>
+      `,
+      PROBLEM_PAGE_PATH,
+    );
+
+    const result = bootstrapUserscript({
+      reviewStorage: storageDouble.storage,
+      diagnosticSink(event) {
+        diagnostics.push(event);
+      },
+    });
+
+    expect(result).toEqual({
+      session: "authenticated",
+      menuEntryMounted: true,
+      toggleMounted: false,
+    });
+    expect(diagnostics).toEqual([
+      {
+        code: "problem_unresolvable",
+        component: "ToggleMountCoordinator",
+        operation: "startup_toggle_mount",
+      },
+    ]);
+  });
+
+  test("records storage diagnostics without surfacing user-visible startup errors", () => {
+    const storageDouble = createMemoryStorageDouble({ failOnRead: true });
+    const diagnostics: Array<{
+      code: string;
+      component: string;
+      operation: string;
+    }> = [];
+
+    setDocument(authenticatedProblemPageHtml(), PROBLEM_PAGE_PATH);
+
+    const result = bootstrapUserscript({
+      reviewStorage: storageDouble.storage,
+      diagnosticSink(event) {
+        diagnostics.push(event);
+      },
+    });
+
+    expect(result).toEqual({
+      session: "authenticated",
+      menuEntryMounted: true,
+      toggleMounted: true,
+    });
+    expect(diagnostics).toEqual([
+      {
+        code: "storage_unavailable",
+        component: "ReviewStoreAdapter",
+        operation: "startup_toggle_state_load",
+      },
+      {
+        code: "storage_unavailable",
+        component: "DailySuggestionService",
+        operation: "startup_daily_suggestion",
+      },
+    ]);
+    expect(domDocument.querySelector("#ac-revisit-popup-root")).toBeNull();
+  });
 });
