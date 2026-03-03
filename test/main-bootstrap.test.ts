@@ -195,7 +195,7 @@ describe("bootstrapUserscript", () => {
     expect(overlay).toBeTruthy();
     expect(panel).toBeTruthy();
     expect(title?.textContent).toBe("今日の一問");
-    expect(actionButton?.textContent).toBe("更新");
+    expect(actionButton?.textContent).toBe("完了");
   });
 
   test("resolves today's suggestion before opening the popup from the menu", () => {

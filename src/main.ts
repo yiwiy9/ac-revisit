@@ -4,7 +4,7 @@ import { createReviewMutationService } from "./domain/review-mutation";
 import { createReviewStoreAdapter, type ReviewStorePort } from "./persistence/review-store";
 import { createPopupShellPresenter } from "./presentation/popup-shell";
 import { createLocalDateMath, createLocalDateProvider } from "./shared/date";
-import type { DailySuggestionState, LocalDateKey } from "./shared/types";
+import type { DailySuggestionState, LocalDateKey, ReviewWorkspace } from "./shared/types";
 import {
   createAtCoderPageAdapter,
   createAuthSessionGuard,
@@ -18,6 +18,8 @@ export interface PopupRequest {
   readonly source: "menu" | "bootstrap";
   readonly today: LocalDateKey;
   readonly dailyState: DailySuggestionState;
+  readonly activeProblemTitle?: string | null;
+  readonly hasDueCandidates?: boolean;
 }
 
 export interface UserscriptStorageProbe {
@@ -79,7 +81,8 @@ export function bootstrapUserscript(
   const reviewStore = createReviewStoreAdapter(
     dependencies.reviewStorage ?? createUserscriptReviewStorage(),
   );
-  const presentPopup = dependencies.openPopup ?? createPopupShellPresenter();
+  const defaultPopupPresenter =
+    dependencies.openPopup === undefined ? createPopupShellPresenter() : null;
   const localDateMath = createLocalDateMath();
   const candidateSelectionService = createCandidateSelectionService({
     localDateMath,
@@ -93,6 +96,34 @@ export function bootstrapUserscript(
     reviewStore,
     candidateSelectionService,
   });
+
+  function presentPopup(input: {
+    readonly source: "menu" | "bootstrap";
+    readonly today: LocalDateKey;
+    readonly reviewWorkspace: ReviewWorkspace;
+  }) {
+    if (defaultPopupPresenter === null) {
+      dependencies.openPopup?.({
+        source: input.source,
+        today: input.today,
+        dailyState: input.reviewWorkspace.dailyState,
+      });
+      return;
+    }
+
+    const dueCandidates = candidateSelectionService.listDueCandidates({
+      today: input.today,
+      reviewItems: input.reviewWorkspace.reviewItems,
+    });
+    defaultPopupPresenter({
+      source: input.source,
+      today: input.today,
+      reviewItems: input.reviewWorkspace.reviewItems,
+      dailyState: input.reviewWorkspace.dailyState,
+      hasDueCandidates: dueCandidates.length > 0,
+    });
+  }
+
   const page = pageAdapter.detectPage();
   const today = getToday();
   const dailySuggestionResult = dailySuggestionService.ensureTodaySuggestion({
@@ -104,7 +135,7 @@ export function bootstrapUserscript(
     presentPopup({
       source: "bootstrap",
       today,
-      dailyState: dailySuggestionResult.value.dailyState,
+      reviewWorkspace: dailySuggestionResult.value.reviewWorkspace,
     });
   }
 
@@ -124,7 +155,7 @@ export function bootstrapUserscript(
       presentPopup({
         source: input.source,
         today: input.today,
-        dailyState: menuSuggestionResult.value.dailyState,
+        reviewWorkspace: menuSuggestionResult.value.reviewWorkspace,
       });
     },
   });

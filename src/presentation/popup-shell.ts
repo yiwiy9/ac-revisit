@@ -1,4 +1,5 @@
-import type { DailySuggestionState, LocalDateKey } from "../shared/types";
+import type { DailySuggestionState, LocalDateKey, ReviewItem } from "../shared/types";
+import { createPopupViewModelFactory } from "./popup-view-model";
 
 const POPUP_ROOT_ID = "ac-revisit-popup-root";
 const POPUP_OVERLAY_ID = "ac-revisit-popup-overlay";
@@ -11,7 +12,9 @@ const POPUP_TRIGGER_ROLE = "trigger";
 export interface PopupShellRequest {
   readonly source: "menu" | "bootstrap";
   readonly today: LocalDateKey;
+  readonly reviewItems: readonly ReviewItem[];
   readonly dailyState: DailySuggestionState;
+  readonly hasDueCandidates?: boolean;
 }
 
 export type PopupShellPresenter = (input: PopupShellRequest) => void;
@@ -19,6 +22,8 @@ export type PopupShellPresenter = (input: PopupShellRequest) => void;
 export function createPopupShellPresenter(
   documentRef: Document = document,
 ): PopupShellPresenter {
+  const popupViewModelFactory = createPopupViewModelFactory();
+
   return (input) => {
     let popup = documentRef.getElementById(POPUP_ROOT_ID);
 
@@ -74,15 +79,39 @@ export function createPopupShellPresenter(
           : `${input.today} のメニュー操作`;
     }
 
+    const viewModel = popupViewModelFactory.build({
+      reviewItems: input.reviewItems,
+      dailyState: input.dailyState,
+      hasDueCandidates: input.hasDueCandidates ?? false,
+    });
+
     if (todayLink !== null) {
-      todayLink.textContent =
-        input.dailyState.activeProblemId === null
-          ? "提案中の問題はありません"
-          : input.dailyState.activeProblemId;
+      todayLink.textContent = viewModel.todayLinkLabel;
+
+      if (viewModel.todayLink.enabled && input.dailyState.activeProblemId !== null) {
+        todayLink.href = toProblemPath(input.dailyState.activeProblemId);
+        todayLink.removeAttribute("aria-disabled");
+        todayLink.removeAttribute("data-muted");
+      } else {
+        todayLink.removeAttribute("href");
+        todayLink.setAttribute("aria-disabled", "true");
+        todayLink.dataset.muted = "true";
+      }
     }
 
     if (actionButton !== null) {
-      actionButton.textContent = "更新";
+      actionButton.textContent = viewModel.primaryActionLabel;
+      actionButton.disabled = !viewModel.primaryAction.enabled;
     }
   };
+}
+
+function toProblemPath(problemId: string): string {
+  const [contestId, taskId] = problemId.split("/");
+
+  if (contestId === undefined || taskId === undefined) {
+    return "#";
+  }
+
+  return `/contests/${contestId}/tasks/${taskId}`;
 }
