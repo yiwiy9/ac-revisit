@@ -6,8 +6,8 @@ import {
   createMenuEntryAdapter,
   createProblemContextResolver,
   createToggleMountCoordinator,
-} from "../src/runtime/shell.ts";
-import type { PopupOpenInput, ToggleInteractionInput } from "../src/runtime/shell.ts";
+} from "../src/runtime/atcoder-shell.ts";
+import type { PopupOpenInput, ToggleInteractionInput } from "../src/runtime/atcoder-shell.ts";
 import {
   anonymousHeaderHtml,
   authenticatedHeaderHtml,
@@ -36,7 +36,7 @@ function renderAnonymousHeader() {
   setDocument(anonymousHeaderHtml());
 }
 
-describe("runtime shell", () => {
+describe("atcoder shell", () => {
   beforeEach(() => {
     setDocument("", "/");
   });

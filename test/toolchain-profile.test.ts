@@ -35,6 +35,7 @@ test("tooling config files exist and lock TypeScript plus Tampermonkey typing", 
     scriptsTsconfigRaw,
     eslintConfigRaw,
     mainSource,
+    bootstrapSource,
     buildScript,
     vitestConfig,
   ] = await Promise.all([
@@ -43,6 +44,7 @@ test("tooling config files exist and lock TypeScript plus Tampermonkey typing", 
       readFile(new URL("../tsconfig.scripts.json", import.meta.url), "utf8"),
       readFile(new URL("../eslint.config.js", import.meta.url), "utf8"),
       readFile(new URL("../src/main.ts", import.meta.url), "utf8"),
+      readFile(new URL("../src/bootstrap/userscript.ts", import.meta.url), "utf8"),
       readFile(new URL("../scripts/build-userscript.ts", import.meta.url), "utf8"),
       readFile(new URL("../vitest.config.ts", import.meta.url), "utf8"),
     ]);
@@ -63,13 +65,16 @@ test("tooling config files exist and lock TypeScript plus Tampermonkey typing", 
   expect(scriptsTsconfig.compilerOptions.moduleResolution).toBe("NodeNext");
   expect(scriptsTsconfig.compilerOptions.lib).toEqual(["ES2022"]);
   expect(eslintConfigRaw).toMatch(/typescript-eslint/);
-  expect(mainSource).toMatch(/GM_getValue/);
-  expect(mainSource).toMatch(/GM_setValue/);
+  expect(mainSource).toMatch(/\.\/bootstrap\/userscript/);
+  expect(mainSource).toMatch(/bootstrapUserscript\(\)/);
+  expect(bootstrapSource).toMatch(/GM_getValue/);
+  expect(bootstrapSource).toMatch(/GM_setValue/);
   expect(mainSource).not.toMatch(/: any\b/);
-  expect(mainSource).not.toMatch(/declare const GM_/);
+  expect(bootstrapSource).not.toMatch(/: any\b/);
+  expect(bootstrapSource).not.toMatch(/declare const GM_/);
   expect(buildScript).toMatch(/interface BuildUserscriptOptions/);
   expect(buildScript).toMatch(/from "esbuild"/);
   expect(buildScript).toMatch(/src\/main\.ts/);
   expect(vitestConfig).toMatch(/environment:\s*"jsdom"/);
-  expect(mainSource).toMatch(/createPopupShellPresenter/);
+  expect(bootstrapSource).toMatch(/createPopupShellPresenter/);
 });

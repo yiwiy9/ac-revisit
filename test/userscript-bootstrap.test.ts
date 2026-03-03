@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, test } from "vitest";
 
-import { bootstrapUserscript } from "../src/main.ts";
+import { bootstrapUserscript } from "../src/bootstrap/userscript.ts";
 import { createReviewStoreAdapter } from "../src/persistence/review-store.ts";
-import type { PopupRequest } from "../src/main.ts";
+import type { PopupRequest } from "../src/bootstrap/userscript.ts";
 import type { ReviewStorePort } from "../src/persistence/review-store.ts";
 import type { ReviewWorkspace } from "../src/shared/types.ts";
 import {
