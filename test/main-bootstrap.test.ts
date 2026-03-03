@@ -180,8 +180,11 @@ describe("bootstrapUserscript", () => {
       getToday: () => "2026-03-02",
     });
 
-    const popup = domDocument.querySelector("#ac-revisit-popup");
+    const popup = domDocument.querySelector("#ac-revisit-popup-root");
+    const overlay = domDocument.querySelector("#ac-revisit-popup-overlay");
+    const panel = domDocument.querySelector("#ac-revisit-popup-panel");
     const title = domDocument.querySelector("#ac-revisit-popup-title");
+    const actionButton = domDocument.querySelector("#ac-revisit-popup-action");
 
     expect(popup).toBeTruthy();
     expect(popup?.getAttribute("role")).toBe("dialog");
@@ -189,7 +192,10 @@ describe("bootstrapUserscript", () => {
     expect(popup?.getAttribute("data-status")).toBe("incomplete");
     expect(popup?.getAttribute("data-active-problem-id")).toBe("abc100/abc100_a");
     expect(popup?.getAttribute("data-last-daily-evaluated-on")).toBe("2026-03-02");
+    expect(overlay).toBeTruthy();
+    expect(panel).toBeTruthy();
     expect(title?.textContent).toBe("今日の一問");
+    expect(actionButton?.textContent).toBe("更新");
   });
 
   test("resolves today's suggestion before opening the popup from the menu", () => {
