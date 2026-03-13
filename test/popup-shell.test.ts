@@ -91,11 +91,13 @@ test("PopupShellPresenter renders one shared popup skeleton for both menu and bo
   expect(body).toBeTruthy();
   expect(footer).toBeTruthy();
   expect(heading?.textContent).toBe("今日の一問");
-  expect(closeButton?.textContent).toBe("閉じる");
+  expect(closeButton?.textContent).toBe("×");
+  expect(closeButton?.getAttribute("aria-label")).toBe("閉じる");
   expect(footerCloseButton?.textContent).toBe("閉じる");
   expect(actionButton?.tagName).toBe("BUTTON");
-  expect((panel as HTMLElement | null)?.style.maxWidth).toBe("32rem");
-  expect((panel as HTMLElement | null)?.style.width).toBe("calc(100% - 2rem)");
+  expect((panel as HTMLElement | null)?.style.maxWidth).toBe("37.5rem");
+  expect((panel as HTMLElement | null)?.style.width).toBe("100%");
+  expect((panel as HTMLElement | null)?.style.backgroundColor).toBe("rgb(255, 255, 255)");
 
   presentPopup(
     buildSnapshot({
@@ -199,8 +201,10 @@ test("PopupShellPresenter enables the today link and labels the action as comple
   expect(todayLink?.textContent).toBe("A - Happy Birthday!");
   expect(todayLink?.getAttribute("href")).toBe("/contests/abc100/tasks/abc100_a");
   expect(todayLink?.getAttribute("aria-disabled")).toBeNull();
+  expect(todayLink?.style.backgroundColor).toBe("rgb(255, 255, 255)");
   expect(actionButton?.textContent).toBe("完了");
   expect(actionButton?.disabled).toBe(false);
+  expect(actionButton?.style.backgroundColor).toBe("rgb(51, 122, 183)");
 });
 
 test("PopupShellPresenter grays out the today link and disables the next action when no due candidates remain", () => {
@@ -235,8 +239,10 @@ test("PopupShellPresenter grays out the today link and disables the next action 
   expect(todayLink?.hasAttribute("href")).toBe(false);
   expect(todayLink?.getAttribute("aria-disabled")).toBe("true");
   expect(todayLink?.getAttribute("data-muted")).toBe("true");
+  expect(todayLink?.style.backgroundColor).toBe("rgb(245, 245, 245)");
   expect(actionButton?.textContent).toBe("もう一問");
   expect(actionButton?.disabled).toBe(true);
+  expect(actionButton?.style.cursor).toBe("not-allowed");
 });
 
 test("PopupShellPresenter enables the next action when today's problem is complete and due candidates remain", () => {

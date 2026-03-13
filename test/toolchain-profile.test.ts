@@ -18,6 +18,7 @@ test("package.json defines isolated tooling scripts and devDependencies", async 
     "npm run lint && npm run typecheck && npm run typecheck:scripts && npm run typecheck:test && npm test",
   );
   expect(packageJson.scripts.build).toBe("npm run verify && tsx scripts/build-userscript.ts");
+  expect(packageJson.scripts.dev).toBe("tsx scripts/dev-userscript.ts");
   expect(packageJson.scripts.test).toBe("vitest run");
   expect(packageJson.devDependencies.typescript).toBe("^5.8.2");
   expect(packageJson.devDependencies.esbuild).toBe("^0.25.0");
@@ -29,16 +30,17 @@ test("package.json defines isolated tooling scripts and devDependencies", async 
 });
 
 test("tooling config files exist and lock TypeScript plus Tampermonkey typing", async () => {
-  const [
-    tsconfigRaw,
-    tsconfigTestRaw,
-    scriptsTsconfigRaw,
-    eslintConfigRaw,
-    mainSource,
-    bootstrapSource,
-    buildScript,
-    vitestConfig,
-  ] = await Promise.all([
+    const [
+      tsconfigRaw,
+      tsconfigTestRaw,
+      scriptsTsconfigRaw,
+      eslintConfigRaw,
+      mainSource,
+      bootstrapSource,
+      buildScript,
+      devScript,
+      vitestConfig,
+    ] = await Promise.all([
       readFile(new URL("../tsconfig.json", import.meta.url), "utf8"),
       readFile(new URL("../tsconfig.test.json", import.meta.url), "utf8"),
       readFile(new URL("../tsconfig.scripts.json", import.meta.url), "utf8"),
@@ -46,6 +48,7 @@ test("tooling config files exist and lock TypeScript plus Tampermonkey typing", 
       readFile(new URL("../src/main.ts", import.meta.url), "utf8"),
       readFile(new URL("../src/bootstrap/userscript.ts", import.meta.url), "utf8"),
       readFile(new URL("../scripts/build-userscript.ts", import.meta.url), "utf8"),
+      readFile(new URL("../scripts/dev-userscript.ts", import.meta.url), "utf8"),
       readFile(new URL("../vitest.config.ts", import.meta.url), "utf8"),
     ]);
 
@@ -75,6 +78,9 @@ test("tooling config files exist and lock TypeScript plus Tampermonkey typing", 
   expect(buildScript).toMatch(/interface BuildUserscriptOptions/);
   expect(buildScript).toMatch(/from "esbuild"/);
   expect(buildScript).toMatch(/src\/main\.ts/);
+  expect(devScript).toMatch(/buildUserscript/);
+  expect(devScript).toMatch(/downloadURL/);
+  expect(devScript).toMatch(/createServer|http\.createServer/);
   expect(vitestConfig).toMatch(/environment:\s*"jsdom"/);
   expect(bootstrapSource).toMatch(/createPopupShellPresenter/);
 });

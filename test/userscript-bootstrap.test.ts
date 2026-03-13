@@ -65,6 +65,86 @@ describe("bootstrapUserscript", () => {
     );
   });
 
+  test("keeps third-party menu entries and does not inherit large class on top-page header", () => {
+    const storageDouble = createMemoryStorageDouble();
+    setDocument(
+      `
+        <header id="header">
+          <div class="header-mypage">
+            <button class="j-dropdown_mypage">yiwiy9</button>
+          </div>
+          <div class="header-mypage_detail">
+            <ul class="header-mypage_list">
+              <li class="large"><a href="/users/yiwiy9"><i class="a-icon a-icon-user"></i> マイプロフィール</a></li>
+              <li><a href="/settings"><i class="a-icon a-icon-setting"></i> 基本設定</a></li>
+              <li><a id="ac-predictor-settings-dropdown-button" href="#"><i class="a-icon a-icon-setting"></i> ac-predictor 設定</a></li>
+              <li class="large"><a href="javascript:void(form_logout.submit())"><i class="a-icon a-icon-logout"></i> ログアウト</a></li>
+            </ul>
+          </div>
+        </header>
+      `,
+      CONTEST_PAGE_PATH,
+    );
+
+    const result = bootstrapUserscript({ reviewStorage: storageDouble.storage });
+    const insertedEntry = domDocument.querySelector<HTMLLIElement>("#ac-revisit-menu-entry");
+    const insertedIcon = domDocument.querySelector("#ac-revisit-menu-entry [data-icon]");
+    const predictorEntry = domDocument.querySelector("#ac-predictor-settings-dropdown-button");
+
+    expect(result).toEqual({
+      session: "authenticated",
+      menuEntryMounted: true,
+      toggleMounted: false,
+    });
+    expect(insertedEntry).toBeTruthy();
+    expect(insertedEntry?.classList.contains("large")).toBe(false);
+    expect(insertedIcon?.className).toContain("a-icon-setting");
+    expect(predictorEntry).toBeTruthy();
+  });
+
+  test("re-mounts menu entry safely after external DOM rewrite without duplicating items", () => {
+    const storageDouble = createMemoryStorageDouble();
+    setDocument(
+      `
+        <header id="header">
+          <div class="header-mypage">
+            <button class="j-dropdown_mypage">yiwiy9</button>
+          </div>
+          <div class="header-mypage_detail">
+            <ul class="header-mypage_list">
+              <li class="large"><a href="/users/yiwiy9"><i class="a-icon a-icon-user"></i> マイプロフィール</a></li>
+              <li><a href="/settings"><i class="a-icon a-icon-setting"></i> 基本設定</a></li>
+              <li><a id="ac-predictor-settings-dropdown-button" href="#"><i class="a-icon a-icon-setting"></i> ac-predictor 設定</a></li>
+              <li class="large"><a href="javascript:void(form_logout.submit())"><i class="a-icon a-icon-logout"></i> ログアウト</a></li>
+            </ul>
+          </div>
+        </header>
+      `,
+      CONTEST_PAGE_PATH,
+    );
+
+    bootstrapUserscript({ reviewStorage: storageDouble.storage });
+
+    const firstEntry = domDocument.querySelector<HTMLLIElement>("#ac-revisit-menu-entry");
+    expect(firstEntry).toBeTruthy();
+    firstEntry?.remove();
+
+    const rerunResult = bootstrapUserscript({ reviewStorage: storageDouble.storage });
+    const entries = domDocument.querySelectorAll("#ac-revisit-menu-entry");
+    const predictorEntries = domDocument.querySelectorAll("#ac-predictor-settings-dropdown-button");
+    const logoutEntries = Array.from(domDocument.querySelectorAll(".header-mypage_list a")).filter((link) =>
+      (link.textContent ?? "").includes("ログアウト"),
+    );
+    const remountedEntry = domDocument.querySelector<HTMLLIElement>("#ac-revisit-menu-entry");
+
+    expect(rerunResult.session).toBe("authenticated");
+    expect(rerunResult.menuEntryMounted).toBe(true);
+    expect(entries).toHaveLength(1);
+    expect(predictorEntries).toHaveLength(1);
+    expect(logoutEntries).toHaveLength(1);
+    expect(remountedEntry?.classList.contains("large")).toBe(false);
+  });
+
   test("wires the toggle button to persisted review registration", () => {
     const storageDouble = createMemoryStorageDouble();
 

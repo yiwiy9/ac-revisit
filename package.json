@@ -6,6 +6,7 @@
   "scripts": {
     "build": "npm run verify && tsx scripts/build-userscript.ts",
     "build:userscript": "tsx scripts/build-userscript.ts",
+    "dev": "tsx scripts/dev-userscript.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "typecheck:scripts": "tsc -p tsconfig.scripts.json --noEmit",

@@ -133,28 +133,33 @@ export function createPopupShellPresenter(
       popup.tabIndex = -1;
       popup.setAttribute("role", "dialog");
       popup.setAttribute("aria-modal", "true");
+      popup.style.position = "fixed";
+      popup.style.inset = "0";
+      popup.style.zIndex = "1050";
+      popup.style.overflowY = "auto";
+      popup.style.padding = "1rem";
+      popup.style.boxSizing = "border-box";
 
       const overlay = documentRef.createElement("div");
       overlay.id = POPUP_OVERLAY_ID;
       overlay.style.position = "fixed";
       overlay.style.inset = "0";
-      overlay.style.backgroundColor = "rgba(15, 23, 42, 0.35)";
+      overlay.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
       popup.append(overlay);
 
       const panel = documentRef.createElement("div");
       panel.id = POPUP_PANEL_ID;
-      panel.style.position = "fixed";
-      panel.style.top = "50%";
-      panel.style.left = "50%";
-      panel.style.transform = "translate(-50%, -50%)";
-      panel.style.width = "calc(100% - 2rem)";
-      panel.style.maxWidth = "32rem";
+      panel.style.position = "relative";
+      panel.style.width = "100%";
+      panel.style.maxWidth = "37.5rem";
+      panel.style.margin = "2rem auto";
       panel.style.boxSizing = "border-box";
-      panel.style.padding = "1rem";
-      panel.style.borderRadius = "0.75rem";
-      panel.style.backgroundColor = "#f8fafc";
-      panel.style.color = "#0f172a";
-      panel.style.boxShadow = "0 1.5rem 3rem rgba(15, 23, 42, 0.2)";
+      panel.style.border = "1px solid rgba(0, 0, 0, 0.2)";
+      panel.style.borderRadius = "0.375rem";
+      panel.style.backgroundColor = "#ffffff";
+      panel.style.color = "#333333";
+      panel.style.boxShadow = "0 0.3125rem 0.9375rem rgba(0, 0, 0, 0.5)";
+      panel.style.zIndex = "1";
       popup.append(panel);
 
       const header = documentRef.createElement("div");
@@ -163,11 +168,12 @@ export function createPopupShellPresenter(
       header.style.alignItems = "center";
       header.style.justifyContent = "space-between";
       header.style.gap = "0.75rem";
+      header.style.padding = "0.9375rem 0.9375rem 0";
       panel.append(header);
 
       const body = documentRef.createElement("div");
       body.id = POPUP_BODY_ID;
-      body.style.marginTop = "0.75rem";
+      body.style.padding = "0.9375rem";
       panel.append(body);
 
       const footer = documentRef.createElement("div");
@@ -176,43 +182,75 @@ export function createPopupShellPresenter(
       footer.style.justifyContent = "space-between";
       footer.style.alignItems = "center";
       footer.style.gap = "0.75rem";
-      footer.style.marginTop = "1rem";
+      footer.style.padding = "0 0.9375rem 0.9375rem";
       panel.append(footer);
 
       const title = documentRef.createElement("h2");
       title.id = POPUP_TITLE_ID;
       title.textContent = "今日の一問";
       title.style.margin = "0";
+      title.style.fontSize = "1.125rem";
+      title.style.fontWeight = "600";
+      title.style.lineHeight = "1.4";
       header.append(title);
 
       const closeButton = documentRef.createElement("button");
       closeButton.id = POPUP_CLOSE_ID;
       closeButton.type = "button";
-      closeButton.textContent = "閉じる";
+      closeButton.textContent = "×";
+      closeButton.setAttribute("aria-label", "閉じる");
+      closeButton.style.border = "0";
+      closeButton.style.background = "transparent";
+      closeButton.style.color = "#777777";
+      closeButton.style.fontSize = "1.5rem";
+      closeButton.style.lineHeight = "1";
+      closeButton.style.padding = "0";
+      closeButton.style.cursor = "pointer";
       header.append(closeButton);
 
       const triggerLabel = documentRef.createElement("p");
       triggerLabel.dataset.role = POPUP_TRIGGER_ROLE;
-      triggerLabel.style.margin = "0 0 0.5rem 0";
+      triggerLabel.style.margin = "0 0 0.75rem 0";
+      triggerLabel.style.fontSize = "0.875rem";
+      triggerLabel.style.color = "#777777";
       body.append(triggerLabel);
 
       const todayLink = documentRef.createElement("a");
       todayLink.id = POPUP_TODAY_LINK_ID;
       todayLink.setAttribute("href", "#");
       todayLink.style.display = "block";
-      todayLink.style.minHeight = "1.5rem";
+      todayLink.style.minHeight = "2.75rem";
       todayLink.style.wordBreak = "break-word";
+      todayLink.style.padding = "0.75rem 0.875rem";
+      todayLink.style.border = "1px solid #dddddd";
+      todayLink.style.borderRadius = "0.25rem";
+      todayLink.style.backgroundColor = "#f9f9f9";
+      todayLink.style.lineHeight = "1.5";
       body.append(todayLink);
 
       const actionButton = documentRef.createElement("button");
       actionButton.id = POPUP_ACTION_ID;
       actionButton.type = "button";
+      actionButton.style.minWidth = "7rem";
+      actionButton.style.padding = "0.375rem 0.75rem";
+      actionButton.style.border = "1px solid transparent";
+      actionButton.style.borderRadius = "0.25rem";
+      actionButton.style.backgroundColor = "#337ab7";
+      actionButton.style.borderColor = "#2e6da4";
+      actionButton.style.color = "#ffffff";
+      actionButton.style.cursor = "pointer";
       footer.append(actionButton);
 
       const dismissButton = documentRef.createElement("button");
       dismissButton.id = POPUP_DISMISS_ID;
       dismissButton.type = "button";
       dismissButton.textContent = "閉じる";
+      dismissButton.style.padding = "0.375rem 0.75rem";
+      dismissButton.style.border = "1px solid #cccccc";
+      dismissButton.style.borderRadius = "0.25rem";
+      dismissButton.style.backgroundColor = "#ffffff";
+      dismissButton.style.color = "#333333";
+      dismissButton.style.cursor = "pointer";
       footer.append(dismissButton);
 
       documentRef.body.append(popup);
@@ -254,22 +292,30 @@ export function createPopupShellPresenter(
         todayLink.href = toProblemPath(input.reviewWorkspace.dailyState.activeProblemId);
         todayLink.removeAttribute("aria-disabled");
         todayLink.removeAttribute("data-muted");
-        todayLink.style.color = "";
+        todayLink.style.color = "#337ab7";
         todayLink.style.pointerEvents = "";
-        todayLink.style.textDecoration = "";
+        todayLink.style.textDecoration = "none";
+        todayLink.style.backgroundColor = "#ffffff";
+        todayLink.style.borderColor = "#d9edf7";
       } else {
         todayLink.removeAttribute("href");
         todayLink.setAttribute("aria-disabled", "true");
         todayLink.dataset.muted = "true";
-        todayLink.style.color = "#64748b";
+        todayLink.style.color = "#777777";
         todayLink.style.pointerEvents = "none";
         todayLink.style.textDecoration = "none";
+        todayLink.style.backgroundColor = "#f5f5f5";
+        todayLink.style.borderColor = "#e5e5e5";
       }
     }
 
     if (actionButton !== null) {
       actionButton.textContent = input.viewModel.primaryActionLabel;
       actionButton.disabled = !input.viewModel.primaryAction.enabled;
+      actionButton.style.backgroundColor = input.viewModel.primaryAction.enabled ? "#337ab7" : "#d9d9d9";
+      actionButton.style.borderColor = input.viewModel.primaryAction.enabled ? "#2e6da4" : "#cccccc";
+      actionButton.style.color = input.viewModel.primaryAction.enabled ? "#ffffff" : "#666666";
+      actionButton.style.cursor = input.viewModel.primaryAction.enabled ? "pointer" : "not-allowed";
     }
 
     if (overlay !== null) {

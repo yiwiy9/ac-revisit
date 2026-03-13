@@ -4,16 +4,27 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const PUBLISHED_USERSCRIPT_NAME = "ac-revisit";
-const DEFAULT_NAMESPACE = "https://github.com/openai/ac-revisit";
+const DEFAULT_NAMESPACE = "https://github.com/yiwiy9/ac-revisit";
+const DEFAULT_HOMEPAGE_URL = "https://github.com/yiwiy9/ac-revisit";
+const DEFAULT_AUTHOR = "yiwiy9";
+const DEFAULT_LICENSE = "MIT";
 const DEFAULT_DESCRIPTION = "AtCoder で復習したい問題を静かに提案する userscript";
 const DEFAULT_MATCH = "https://atcoder.jp/*";
 const DEFAULT_GRANTS = ["GM_getValue", "GM_setValue"];
 const DEFAULT_RUN_AT = "document-end";
 
+interface UserscriptMetadataEntry {
+  readonly key: string;
+  readonly value: string;
+}
+
 interface BuildUserscriptOptions {
   packageJsonPath?: string | URL;
   outputPath?: string | URL;
   entryPointPath?: string | URL;
+  userscriptName?: string;
+  userscriptVersion?: string;
+  extraMetadata?: readonly UserscriptMetadataEntry[];
 }
 
 function toFilesystemPath(targetPath: string | URL): string {
@@ -24,15 +35,27 @@ function toFilesystemPath(targetPath: string | URL): string {
   return targetPath;
 }
 
-function buildMetadataBlock({ name, version }: { name: string; version: string }): string {
+function buildMetadataBlock({
+  name,
+  version,
+  extraMetadata = [],
+}: {
+  name: string;
+  version: string;
+  extraMetadata?: readonly UserscriptMetadataEntry[];
+}): string {
   return [
     "// ==UserScript==",
     `// @name ${name}`,
     `// @namespace ${DEFAULT_NAMESPACE}`,
+    `// @homepageURL ${DEFAULT_HOMEPAGE_URL}`,
+    `// @author ${DEFAULT_AUTHOR}`,
+    `// @license ${DEFAULT_LICENSE}`,
     `// @version ${version}`,
     `// @description ${DEFAULT_DESCRIPTION}`,
     `// @match ${DEFAULT_MATCH}`,
     ...DEFAULT_GRANTS.map((grant) => `// @grant ${grant}`),
+    ...extraMetadata.map((entry) => `// @${entry.key} ${entry.value}`),
     `// @run-at ${DEFAULT_RUN_AT}`,
     "// ==/UserScript==",
     "",
@@ -43,6 +66,9 @@ export async function buildUserscript({
   packageJsonPath = new URL("../package.json", import.meta.url),
   outputPath = new URL("../dist/ac-revisit.user.js", import.meta.url),
   entryPointPath = new URL("../src/main.ts", import.meta.url),
+  userscriptName,
+  userscriptVersion,
+  extraMetadata = [],
 }: BuildUserscriptOptions = {}): Promise<{ outputPath: string }> {
   const resolvedPackageJsonPath = toFilesystemPath(packageJsonPath);
   const resolvedOutputPath = toFilesystemPath(outputPath);
@@ -67,6 +93,8 @@ export async function buildUserscript({
 
   const packageName = packageJson.name as string;
   const packageVersion = packageJson.version as string;
+  const resolvedUserscriptName = userscriptName ?? packageName;
+  const resolvedUserscriptVersion = userscriptVersion ?? packageVersion;
 
   if (packageName !== PUBLISHED_USERSCRIPT_NAME) {
     throw new Error(`Published userscript name must remain ${PUBLISHED_USERSCRIPT_NAME}`);
@@ -89,8 +117,9 @@ export async function buildUserscript({
   }
 
   const userscript = `${buildMetadataBlock({
-    name: packageName,
-    version: packageVersion,
+    name: resolvedUserscriptName,
+    version: resolvedUserscriptVersion,
+    extraMetadata,
   })}${runtime}`;
 
   await mkdir(path.dirname(resolvedOutputPath), { recursive: true });

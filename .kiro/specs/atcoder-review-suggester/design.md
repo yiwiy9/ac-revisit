@@ -1612,6 +1612,8 @@ classDiagram
 - トグル押下後の保存失敗では、トグル表示文言を変更しない
 - `MenuEntryAdapter.ensureEntryMounted()` が 2 回呼ばれても常設リンクを重複挿入しない
 - `ToggleMountCoordinator.mount()` が 2 回呼ばれても `ac-revisit-toggle-button` を重複挿入せず、クリック handler が重複しない
+- 新ヘッダーで常設リンクが `a-icon` 系アイコンを再利用し、メニュー項目のサイズが既存設定項目から乖離しない
+- 同一ユーザーメニューへ他 userscript が追加した項目（例: `ac-predictor`）が存在しても、常設リンク挿入によって既存項目や `divider` アンカーを破壊しない
 
 ### 配布・ビルド検証
 - `package.json` に `version` と `lint` / `typecheck` / `verify` / `build` scripts が定義される

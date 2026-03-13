@@ -104,7 +104,7 @@ describe("atcoder shell", () => {
       expect(domDocument.querySelectorAll("#ac-revisit-menu-entry")).toHaveLength(1);
       expect(entry?.tagName).toBe("LI");
       expect(link?.textContent).toContain("ac-revisit 操作");
-      expect(icon?.textContent).toBe("↺");
+      expect(icon?.className).toContain("glyphicon-cog");
       expect(label?.textContent).toBe("ac-revisit 操作");
 
       link?.dispatchEvent(new domWindow.MouseEvent("click", { bubbles: true, cancelable: true }));
@@ -152,6 +152,41 @@ describe("atcoder shell", () => {
       ]);
     });
 
+    test("reuses a-icon settings icon in top-page menu so entry size matches existing items", () => {
+      setDocument(
+        `
+          <header id="header">
+            <div class="header-mypage">
+              <button class="j-dropdown_mypage">tourist</button>
+            </div>
+            <div class="header-mypage_detail">
+              <ul class="header-mypage_list">
+                <li class="large"><a href="/users/tourist"><i class="a-icon a-icon-user"></i> マイプロフィール</a></li>
+                <li><a href="/settings"><i class="a-icon a-icon-setting"></i> 基本設定</a></li>
+                <li class="large"><a href="javascript:void(form_logout.submit())"><i class="a-icon a-icon-logout"></i> ログアウト</a></li>
+              </ul>
+            </div>
+          </header>
+        `,
+      );
+      const adapter = createAtCoderPageAdapter(domWindow, domDocument);
+      const menuEntry = createMenuEntryAdapter({
+        pageAdapter: adapter,
+        getToday: () => "2026-03-02",
+        openPopup() {},
+      });
+
+      expect(menuEntry.ensureEntryMounted()).toEqual({
+        ok: true,
+        value: { mounted: true },
+      });
+
+      const icon = domDocument.querySelector("#ac-revisit-menu-entry [data-icon]");
+      const inserted = domDocument.querySelector<HTMLLIElement>("#ac-revisit-menu-entry");
+      expect(icon?.className).toContain("a-icon-setting");
+      expect(inserted?.classList.contains("large")).toBe(false);
+    });
+
     test("returns anchor_missing when no supported menu anchor exists", () => {
       renderAnonymousHeader();
       const adapter = createAtCoderPageAdapter(domWindow, domDocument);
@@ -170,7 +205,7 @@ describe("atcoder shell", () => {
       expect(domDocument.querySelector("#ac-revisit-menu-entry")).toBeNull();
     });
 
-    test("inserts the persistent menu entry before a settings-like menu item when available", () => {
+    test("inserts the persistent menu entry immediately before logout and reuses the settings icon styling", () => {
       setDocument(
         `
           <nav class="navbar">
@@ -179,7 +214,7 @@ describe("atcoder shell", () => {
                 <a class="dropdown-toggle">tourist</a>
                 <ul class="dropdown-menu">
                   <li><a href="/users/tourist">プロフィール</a></li>
-                  <li id="settings-item"><a href="/settings">設定</a></li>
+                  <li id="settings-item"><a href="/settings"><span class="glyphicon glyphicon-cog"></span> 設定</a></li>
                   <li><a href="/logout">ログアウト</a></li>
                 </ul>
               </li>
@@ -202,8 +237,143 @@ describe("atcoder shell", () => {
       const menuItems = Array.from(domDocument.querySelectorAll(".dropdown-menu > li")).map((item) =>
         item.id === "ac-revisit-menu-entry" ? "ac-revisit" : item.id || item.textContent?.trim(),
       );
+      const insertedIcon = domDocument.querySelector("#ac-revisit-menu-entry [data-icon]");
 
-      expect(menuItems).toEqual(["プロフィール", "ac-revisit", "settings-item", "ログアウト"]);
+      expect(menuItems).toEqual(["プロフィール", "settings-item", "ac-revisit", "ログアウト"]);
+      expect(insertedIcon?.className).toContain("glyphicon-cog");
+    });
+
+    test("selects the user dropdown menu even when other dropdown menus exist earlier in the DOM", () => {
+      setDocument(
+        `
+          <nav class="navbar">
+            <ul class="navbar-left">
+              <li class="dropdown">
+                <a class="dropdown-toggle">Contest</a>
+                <ul class="dropdown-menu" id="contest-menu">
+                  <li><a href="/contests">コンテスト一覧</a></li>
+                </ul>
+              </li>
+            </ul>
+            <ul class="navbar-right">
+              <li class="dropdown">
+                <a class="dropdown-toggle">tourist</a>
+                <ul class="dropdown-menu" id="user-menu">
+                  <li><a href="/users/tourist">プロフィール</a></li>
+                  <li><a href="/settings"><span class="glyphicon glyphicon-wrench"></span> 基本設定</a></li>
+                  <li><a href="javascript:void(form_logout.submit())">ログアウト</a></li>
+                </ul>
+              </li>
+            </ul>
+          </nav>
+        `,
+      );
+      const adapter = createAtCoderPageAdapter(domWindow, domDocument);
+      const menuEntry = createMenuEntryAdapter({
+        pageAdapter: adapter,
+        getToday: () => "2026-03-02",
+        openPopup() {},
+      });
+
+      expect(menuEntry.ensureEntryMounted()).toEqual({
+        ok: true,
+        value: { mounted: true },
+      });
+
+      const inserted = domDocument.querySelector("#ac-revisit-menu-entry");
+      const userMenu = domDocument.querySelector("#user-menu");
+      const contestMenu = domDocument.querySelector("#contest-menu");
+
+      expect(inserted?.parentElement).toBe(userMenu);
+      expect(inserted?.parentElement).not.toBe(contestMenu);
+    });
+
+    test("keeps trailing divider before logout so external scripts using divider anchors remain compatible", () => {
+      setDocument(
+        `
+          <nav class="navbar">
+            <ul class="navbar-right">
+              <li class="dropdown">
+                <a class="dropdown-toggle">tourist</a>
+                <ul class="dropdown-menu">
+                  <li><a href="/users/tourist">プロフィール</a></li>
+                  <li><a href="/settings"><span class="glyphicon glyphicon-wrench"></span> 基本設定</a></li>
+                  <li id="predictor-item"><a href="#" id="ac-predictor-settings-dropdown-button">ac-predictor 設定</a></li>
+                  <li class="divider" id="logout-divider"></li>
+                  <li><a href="javascript:void(form_logout.submit())">ログアウト</a></li>
+                </ul>
+              </li>
+            </ul>
+          </nav>
+        `,
+      );
+      const adapter = createAtCoderPageAdapter(domWindow, domDocument);
+      const menuEntry = createMenuEntryAdapter({
+        pageAdapter: adapter,
+        getToday: () => "2026-03-02",
+        openPopup() {},
+      });
+
+      expect(menuEntry.ensureEntryMounted()).toEqual({
+        ok: true,
+        value: { mounted: true },
+      });
+
+      const menuItems = Array.from(domDocument.querySelectorAll(".dropdown-menu > li")).map((item) =>
+        item.id === "ac-revisit-menu-entry" ? "ac-revisit" : item.id || item.textContent?.trim(),
+      );
+      const inserted = domDocument.querySelector<HTMLLIElement>("#ac-revisit-menu-entry");
+
+      expect(menuItems).toEqual([
+        "プロフィール",
+        "基本設定",
+        "predictor-item",
+        "ac-revisit",
+        "logout-divider",
+        "ログアウト",
+      ]);
+      expect(inserted?.classList.contains("divider")).toBe(false);
+    });
+
+    test("does not convert ac-revisit entry into divider even when mounted after predictor insertion", () => {
+      setDocument(
+        `
+          <nav class="navbar">
+            <ul class="navbar-right">
+              <li class="dropdown">
+                <a class="dropdown-toggle">tourist</a>
+                <ul class="dropdown-menu">
+                  <li><a href="/users/tourist">プロフィール</a></li>
+                  <li><a href="/settings"><span class="glyphicon glyphicon-wrench"></span> 基本設定</a></li>
+                  <li><a id="ac-predictor-settings-dropdown-button" href="#">ac-predictor 設定</a></li>
+                  <li class="divider"></li>
+                  <li><a href="javascript:void(form_logout.submit())">ログアウト</a></li>
+                </ul>
+              </li>
+            </ul>
+          </nav>
+        `,
+      );
+      const adapter = createAtCoderPageAdapter(domWindow, domDocument);
+      const menuEntry = createMenuEntryAdapter({
+        pageAdapter: adapter,
+        getToday: () => "2026-03-02",
+        openPopup() {},
+      });
+
+      expect(menuEntry.ensureEntryMounted()).toEqual({
+        ok: true,
+        value: { mounted: true },
+      });
+
+      const inserted = domDocument.querySelector<HTMLLIElement>("#ac-revisit-menu-entry");
+      const predictor = domDocument.querySelector("#ac-predictor-settings-dropdown-button");
+      const dividerCount = domDocument.querySelectorAll(".dropdown-menu > li.divider").length;
+
+      expect(inserted).toBeTruthy();
+      expect(inserted?.classList.contains("divider")).toBe(false);
+      expect(predictor).toBeTruthy();
+      expect(dividerCount).toBe(1);
     });
   });
 
@@ -303,6 +473,7 @@ describe("atcoder shell", () => {
       expect(button?.textContent).toBe("ac-revisit 追加");
       expect(button?.getAttribute("data-state")).toBe("unregistered");
       expect(button?.className).toContain("btn-sm");
+      expect((button as HTMLButtonElement | null)?.style.marginLeft).toBe("0.5rem");
       expect(domDocument.querySelectorAll("#ac-revisit-toggle-button")).toHaveLength(1);
     });
 

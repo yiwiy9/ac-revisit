@@ -1,7 +1,6 @@
 import type { ContestId, LocalDateKey, ProblemId, ProblemTitle } from "../shared/types.ts";
 import type { Result } from "../shared/types.ts";
 
-const LEGACY_MENU_SELECTOR = "ul.dropdown-menu";
 const LEGACY_USER_HANDLE_SELECTOR = ".navbar-right .dropdown > .dropdown-toggle";
 const TOP_PAGE_MYPAGE_SELECTOR = ".header-mypage";
 const TOP_PAGE_MENU_SELECTOR = ".header-mypage_detail .header-mypage_list";
@@ -145,7 +144,7 @@ export function createAtCoderPageAdapter(
       return { kind: "other", path };
     },
     inspectHeaderShell() {
-      const legacyMenuAnchor = findElement(documentRef, LEGACY_MENU_SELECTOR);
+      const legacyMenuAnchor = findLegacyUserMenuAnchor(documentRef);
       const topPageMenuAnchor = findElement(documentRef, TOP_PAGE_MENU_SELECTOR);
       const hasLegacyUserMenu = legacyMenuAnchor !== null;
       const hasTopPageUserMenu =
@@ -268,7 +267,7 @@ export function createMenuEntryAdapter(
       const link = documentRef.createElement("a");
       link.id = MENU_ENTRY_LINK_ID;
       link.href = "#";
-      appendMenuLinkContents(link, documentRef);
+      appendMenuLinkContents(link, documentRef, headerShell.menuAnchor.element);
       link.addEventListener("click", (event) => {
         event.preventDefault();
         dependencies.openPopup({
@@ -415,6 +414,27 @@ function findElement(root: ParentNode, selector: string): HTMLElement | null {
   return element instanceof HTMLElement ? element : null;
 }
 
+function findLegacyUserMenuAnchor(documentRef: Document): HTMLElement | null {
+  const candidates = Array.from(documentRef.querySelectorAll("ul.dropdown-menu")).filter(
+    (candidate): candidate is HTMLElement => candidate instanceof HTMLElement,
+  );
+
+  for (const candidate of candidates) {
+    const hasLogoutEntry = findMenuItem(candidate, (href, label) => {
+      return href.startsWith("/logout") || href.includes("form_logout") || label.includes("ログアウト");
+    });
+    const hasSettingsEntry = findMenuItem(candidate, (href, label) => {
+      return href.startsWith("/settings") || label.includes("設定");
+    });
+
+    if (hasLogoutEntry !== undefined || hasSettingsEntry !== undefined) {
+      return candidate;
+    }
+  }
+
+  return candidates.at(0) ?? null;
+}
+
 function readTrimmedText(root: ParentNode, selector: string): string | null {
   const element = root.querySelector(selector);
 
@@ -476,14 +496,19 @@ function syncToggleButton(
     "btn-sm",
     TOGGLE_BUTTON_CLASS,
   ].join(" ");
+  button.style.marginLeft = "0.5rem";
+  button.style.verticalAlign = "middle";
   button.dataset.state = isRegistered ? "registered" : "unregistered";
   button.dataset.problemId = problemId;
   button.textContent = isRegistered ? "ac-revisit 解除" : "ac-revisit 追加";
 }
 
-function appendMenuLinkContents(link: HTMLAnchorElement, documentRef: Document): void {
-  const icon = documentRef.createElement("span");
-  icon.textContent = "↺";
+function appendMenuLinkContents(
+  link: HTMLAnchorElement,
+  documentRef: Document,
+  menuElement: HTMLElement,
+): void {
+  const icon = createMenuIcon(documentRef, menuElement);
   icon.dataset.icon = "true";
   icon.setAttribute("aria-hidden", "true");
 
@@ -497,20 +522,92 @@ function appendMenuLinkContents(link: HTMLAnchorElement, documentRef: Document):
 }
 
 function insertMenuItem(menuElement: HTMLElement, item: HTMLLIElement): void {
-  const settingsItem = Array.from(menuElement.querySelectorAll("li")).find((candidate) => {
-    const link = candidate.querySelector("a");
-    const href = link?.getAttribute("href") ?? "";
-    const label = link?.textContent?.trim() ?? "";
+  const logoutItem = findMenuItem(menuElement, (href, label) => {
+    return href.startsWith("/logout") || href.includes("form_logout") || label.includes("ログアウト");
+  });
 
+  if (logoutItem instanceof HTMLElement) {
+    const trailingDivider =
+      logoutItem.previousElementSibling instanceof HTMLLIElement &&
+      logoutItem.previousElementSibling.classList.contains("divider")
+        ? logoutItem.previousElementSibling
+        : null;
+    const insertionAnchor = trailingDivider ?? logoutItem;
+
+    applyMenuItemStyling(item, insertionAnchor);
+    insertionAnchor.insertAdjacentElement("beforebegin", item);
+    return;
+  }
+
+  const settingsItem = findMenuItem(menuElement, (href, label) => {
     return href.startsWith("/settings") || label.includes("設定");
   });
 
   if (settingsItem instanceof HTMLElement) {
+    applyMenuItemStyling(item, settingsItem);
     settingsItem.insertAdjacentElement("beforebegin", item);
     return;
   }
 
+  const referenceItem = menuElement.querySelector("li");
+
+  if (referenceItem instanceof HTMLElement) {
+    applyMenuItemStyling(item, referenceItem);
+  }
+
   menuElement.append(item);
+}
+
+function createMenuIcon(documentRef: Document, menuElement: HTMLElement): HTMLElement {
+  const settingsIcon = findSettingsIcon(menuElement) ?? findSettingsIcon(documentRef);
+
+  if (settingsIcon !== null) {
+    return settingsIcon;
+  }
+
+  const fallbackIcon = documentRef.createElement("span");
+  fallbackIcon.className = "glyphicon glyphicon-cog";
+
+  return fallbackIcon;
+}
+
+function findSettingsIcon(root: ParentNode): HTMLElement | null {
+  const settingsLink = findMenuItem(
+    root,
+    (href, label) => href.startsWith("/settings") || label.includes("設定"),
+  )?.querySelector("span.glyphicon, span.fa, i.glyphicon, i.fa, i.a-icon, span.a-icon");
+
+  if (!(settingsLink instanceof HTMLElement)) {
+    return null;
+  }
+
+  return settingsLink.cloneNode(true) as HTMLElement;
+}
+
+function applyMenuItemStyling(item: HTMLLIElement, referenceItem: HTMLElement): void {
+  const referenceLink = referenceItem.querySelector("a");
+  const link = item.querySelector("a");
+
+  if (
+    referenceLink instanceof HTMLAnchorElement &&
+    link instanceof HTMLAnchorElement &&
+    !referenceItem.classList.contains("divider")
+  ) {
+    link.className = referenceLink.className;
+  }
+}
+
+function findMenuItem(
+  root: ParentNode,
+  predicate: (href: string, label: string) => boolean,
+): HTMLElement | undefined {
+  return Array.from(root.querySelectorAll("li")).find((candidate) => {
+    const link = candidate.querySelector("a");
+    const href = link?.getAttribute("href") ?? "";
+    const label = link?.textContent?.trim() ?? "";
+
+    return predicate(href, label);
+  });
 }
 
 function insertRelative(anchor: Extract<DomAnchorResult, { kind: "found" }>, element: HTMLElement): void {
