@@ -334,11 +334,15 @@ interface LocalDateMath {
 | `@match` | 対象 URL | `https://atcoder.jp/*` に固定 |
 | `@grant` | 権限宣言 | `GM_getValue`, `GM_setValue` を含む |
 | `@run-at` | 注入タイミング | `document-end` に固定 |
+| `@homepageURL` | 配布元ページ | GitHub リポジトリ URL を指す |
+| `@author` | 作者表示 | 配布主体と一致する値を維持する |
+| `@license` | ライセンス表示 | `MIT` を維持する |
 
 **Implementation Notes**
 - Integration: ビルド出力時に metadata block を先頭へ付与する。
 - Integration: Greasy Fork 向け必須 metadata は `@name`、`@namespace`、`@version`、`@description`、`@match`、`@grant`、`@run-at` に固定する。
 - Integration: metadata は `build` 時に `package.json.version` を埋め込み、`.user.js` 先頭へ付与する。
+- Integration: 開発用 userscript (`ac-revisit (dev)`) は `@downloadURL` / `@updateURL` を localhost 配信先へ付与し、`@version` を時刻ベースで単調増加させる。
 - Validation: 公開前に metadata 欠落を静的検証する。
 - Risks: `@match` の過剰指定は Greasy Fork ルール違反になりうる。
 
@@ -371,8 +375,10 @@ interface LocalDateMath {
 
 **Implementation Notes**
 - Integration: コマンド名は `npm run lint`、`npm run typecheck`、`npm run verify`、`npm run build` に固定する。
+- Integration: 開発時は `npm run dev` を入口にし、watch build とローカル配信 (`http://127.0.0.1:4310/ac-revisit.dev.user.js`) を同一プロセスで提供する。
 - Integration: `build` は 1 コマンドで metadata block を先頭に付与した [`dist/ac-revisit.user.js`](/workspaces/ac-revisit/dist/ac-revisit.user.js) を生成する。
 - Integration: `@version` は `package.json.version` を唯一の供給元とし、未定義なら `build` を失敗させる。
+- Integration: `dev` の `@version` は `0.0.0.<unix-seconds>` の時刻ベース値を使い、Tampermonkey の「更新を確認」で常に差分検出可能にする。
 - Integration: `build` のビルドツールは `esbuild` に固定し、`src/main.ts` を bundle して単一の [`dist/ac-revisit.user.js`](/workspaces/ac-revisit/dist/ac-revisit.user.js) を生成した後、metadata block を先頭連結する。
 - Integration: metadata block の組み立てと先頭連結は、`npm run build` から呼ばれる単一の補助スクリプト（例: `scripts/build-userscript.ts`）に集約し、`package.json` scripts に複雑なインライン処理を分散させない。
 - Integration: `npm run typecheck` は `tsc --noEmit` に固定し、`build` とは独立して実行する。
