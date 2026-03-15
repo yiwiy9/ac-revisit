@@ -14,6 +14,8 @@
 
 - **@types/tampermonkey**: GM API を型付きで扱う前提を固定する。
 - **ESLint + typescript-eslint**: `any` 逃げを禁止し、静的解析を最低限の品質ゲートにする。
+- **Prettier**: コードとドキュメント整形を自動化し、フォーマット差分を局所化する。
+- **husky + lint-staged**: commit / push 前の品質ゲートをローカルで自動実行する。
 - **Vitest + jsdom**: DOM を含む userscript 挙動を Node 上で再現して検証する。
 - **tsx**: build script を TypeScript のまま実行する。
 
@@ -29,8 +31,16 @@
 ### Code Quality
 
 - lint と typecheck は build から独立して実行できる状態を維持する。
+- フォーマットは Prettier を単一の整形基準とし、`npm run format` / `npm run format:check` を利用できる状態を維持する。
+- staged file に対する整形と軽量な自動修正は `lint-staged` に集約し、`*.{js,mjs,cjs,ts,tsx}` へ `prettier --write` と `eslint --max-warnings=0 --fix`、`*.{json,md,yml,yaml}` へ `prettier --write` を適用する。
 - 失敗時は再試行や自動復旧より、`Result` 型で失敗を返して fail-closed に寄せる。
 - 実行時ログは常時出力せず、必要最小限の診断情報を注入可能にする。
+
+### Local Automation
+
+- `husky` により `pre-commit` で `npm run lint-staged`、`pre-push` で `npm run prepush:guard` を実行する。
+- `prepush:guard` は `npm run verify` を呼び出し、lint・typecheck・test を push 前の標準品質ゲートとして扱う。
+- `.prettierignore` には配布物、依存ディレクトリ、エージェント管理ディレクトリ、spec/steering 以外の機械管理領域を含め、不要な整形対象を広げない。
 
 ### Testing
 

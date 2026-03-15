@@ -65,6 +65,9 @@ test("ReviewMutationService completes today's problem in one write", () => {
 - ローカル確認の標準入口は `npm test`。
 - 公開前または大きな変更前は `npm run verify` と `npm test` をセットで実行する。
 - 配布契約に触れた変更では `npm run build:userscript` まで確認する。
+- commit 前の最小ゲートは `husky` の `pre-commit` で自動実行される `npm run lint-staged` とする。
+- push 前の標準ゲートは `husky` の `pre-push` から呼ばれる `npm run prepush:guard` とし、これは `npm run verify` と等価である。
+- フォーマット差分だけを理由に review ノイズを増やさないため、ローカル整形は `npm run format` または `lint-staged` による自動整形を優先する。
 
 ---
 _テストファイルの一覧ではなく、何をどの粒度で守るかを固定する_

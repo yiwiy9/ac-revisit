@@ -234,8 +234,9 @@ describe("atcoder shell", () => {
         value: { mounted: true },
       });
 
-      const menuItems = Array.from(domDocument.querySelectorAll(".dropdown-menu > li")).map((item) =>
-        item.id === "ac-revisit-menu-entry" ? "ac-revisit" : item.id || item.textContent?.trim(),
+      const menuItems = Array.from(domDocument.querySelectorAll(".dropdown-menu > li")).map(
+        (item) =>
+          item.id === "ac-revisit-menu-entry" ? "ac-revisit" : item.id || item.textContent?.trim(),
       );
       const insertedIcon = domDocument.querySelector("#ac-revisit-menu-entry [data-icon]");
 
@@ -319,8 +320,9 @@ describe("atcoder shell", () => {
         value: { mounted: true },
       });
 
-      const menuItems = Array.from(domDocument.querySelectorAll(".dropdown-menu > li")).map((item) =>
-        item.id === "ac-revisit-menu-entry" ? "ac-revisit" : item.id || item.textContent?.trim(),
+      const menuItems = Array.from(domDocument.querySelectorAll(".dropdown-menu > li")).map(
+        (item) =>
+          item.id === "ac-revisit-menu-entry" ? "ac-revisit" : item.id || item.textContent?.trim(),
       );
       const inserted = domDocument.querySelector<HTMLLIElement>("#ac-revisit-menu-entry");
 
@@ -393,10 +395,7 @@ describe("atcoder shell", () => {
     });
 
     test("reads the submission detail context from the task link in the first details table", () => {
-      setDocument(
-        submissionDetailHtml(),
-        "/contests/abc388/submissions/61566375",
-      );
+      setDocument(submissionDetailHtml(), "/contests/abc388/submissions/61566375");
       const adapter = createAtCoderPageAdapter(domWindow, domDocument);
 
       expect(adapter.readProblemContextSource()).toEqual({
@@ -409,10 +408,7 @@ describe("atcoder shell", () => {
 
   describe("ProblemContextResolver", () => {
     test("normalizes the current problem on both supported contest page shapes", () => {
-      setDocument(
-        problemHeadingHtml(),
-        "/contests/abc388/tasks/abc388_d",
-      );
+      setDocument(problemHeadingHtml(), "/contests/abc388/tasks/abc388_d");
 
       const problemResolver = createProblemContextResolver(
         createAtCoderPageAdapter(domWindow, domDocument),
@@ -425,10 +421,7 @@ describe("atcoder shell", () => {
         problemTitle: "D - Coming of Age Celebration",
       });
 
-      setDocument(
-        submissionDetailHtml(),
-        "/contests/abc388/submissions/61566375",
-      );
+      setDocument(submissionDetailHtml(), "/contests/abc388/submissions/61566375");
 
       const submissionResolver = createProblemContextResolver(
         createAtCoderPageAdapter(domWindow, domDocument),
@@ -478,10 +471,7 @@ describe("atcoder shell", () => {
     });
 
     test("mounts one toggle button immediately after the submission task link", () => {
-      setDocument(
-        submissionDetailHtml(),
-        "/contests/abc388/submissions/61566375",
-      );
+      setDocument(submissionDetailHtml(), "/contests/abc388/submissions/61566375");
       const adapter = createAtCoderPageAdapter(domWindow, domDocument);
       const toggleMount = createToggleMountCoordinator({ pageAdapter: adapter });
 
@@ -494,7 +484,7 @@ describe("atcoder shell", () => {
       });
 
       const button = domDocument.querySelector("#ac-revisit-toggle-button");
-      const taskLink = domDocument.querySelector(".col-sm-12 table a[href*=\"/tasks/\"]");
+      const taskLink = domDocument.querySelector('.col-sm-12 table a[href*="/tasks/"]');
       const heading = domDocument.querySelector(".col-sm-12 p .h2");
 
       expect(button).toBeTruthy();
@@ -563,10 +553,7 @@ describe("atcoder shell", () => {
     });
 
     test("updates the toggle state through the provided click handler", () => {
-      setDocument(
-        problemHeadingHtml(),
-        "/contests/abc388/tasks/abc388_d",
-      );
+      setDocument(problemHeadingHtml(), "/contests/abc388/tasks/abc388_d");
       const adapter = createAtCoderPageAdapter(domWindow, domDocument);
       const toggleCalls: ToggleInteractionInput[] = [];
       let registered = false;

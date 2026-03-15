@@ -43,7 +43,7 @@ test("buildUserscript emits a single userscript bundle with required metadata", 
     expect(output).toMatch(/^\/\/ @grant\s+GM_setValue$/m);
     expect(output).toMatch(/^\/\/ @run-at\s+document-end$/m);
     expect(output).toMatch(/^\/\/ ==\/UserScript==/m);
-  expect(output).toMatch(/\(\(\) => \{/);
+    expect(output).toMatch(/\(\(\) => \{/);
     expect(output).toMatch(/ac-revisit 操作/);
     expect(output).not.toMatch(/@require/);
   } finally {

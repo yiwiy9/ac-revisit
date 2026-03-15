@@ -24,6 +24,11 @@
         "bierner.markdown-checkbox"
       ],
       "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": true
+        },
         "markdown-mermaid.darkModeTheme": "forest"
       }
     }

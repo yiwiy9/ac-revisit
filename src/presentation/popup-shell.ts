@@ -6,10 +6,7 @@ import type {
   ReviewItem,
   ReviewWorkspace,
 } from "../shared/types";
-import {
-  createPopupViewModelFactory,
-  type PopupViewModel,
-} from "./popup-view-model";
+import { createPopupViewModelFactory, type PopupViewModel } from "./popup-view-model";
 
 const POPUP_ROOT_ID = "ac-revisit-popup-root";
 const POPUP_OVERLAY_ID = "ac-revisit-popup-overlay";
@@ -18,11 +15,12 @@ const POPUP_HEADER_ID = "ac-revisit-popup-header";
 const POPUP_BODY_ID = "ac-revisit-popup-body";
 const POPUP_FOOTER_ID = "ac-revisit-popup-footer";
 const POPUP_TITLE_ID = "ac-revisit-popup-title";
+const POPUP_SECTION_TITLE_ID = "ac-revisit-popup-section-title";
+const POPUP_DESCRIPTION_ID = "ac-revisit-popup-description";
 const POPUP_CLOSE_ID = "ac-revisit-popup-close";
 const POPUP_DISMISS_ID = "ac-revisit-popup-dismiss";
 const POPUP_TODAY_LINK_ID = "ac-revisit-popup-today-link";
 const POPUP_ACTION_ID = "ac-revisit-popup-action";
-const POPUP_TRIGGER_ROLE = "trigger";
 
 export interface PopupStateSnapshot {
   readonly source: "menu" | "bootstrap";
@@ -87,10 +85,10 @@ export function createPopupStateLoader(
       const workspaceResult =
         input.mode === "workspace"
           ? success(input.reviewWorkspace)
-          : dependencies.readWorkspace?.() ??
+          : (dependencies.readWorkspace?.() ??
             failure({
               kind: "storage_unavailable",
-            });
+            }));
 
       if (!workspaceResult.ok) {
         return workspaceResult;
@@ -123,6 +121,7 @@ export function createPopupShellPresenter(
 ): PopupShellPresenter {
   const interactionSessionValidator = createInteractionSessionValidator();
   let lastFocusedElement: HTMLElement | null = null;
+  let previousBodyPaddingRight: string | null = null;
 
   const presentPopup: PopupShellPresenter = (input) => {
     let popup = documentRef.getElementById(POPUP_ROOT_ID);
@@ -133,138 +132,115 @@ export function createPopupShellPresenter(
       popup.tabIndex = -1;
       popup.setAttribute("role", "dialog");
       popup.setAttribute("aria-modal", "true");
-      popup.style.position = "fixed";
-      popup.style.inset = "0";
-      popup.style.zIndex = "1050";
-      popup.style.overflowY = "auto";
-      popup.style.padding = "1rem";
-      popup.style.boxSizing = "border-box";
-
-      const overlay = documentRef.createElement("div");
-      overlay.id = POPUP_OVERLAY_ID;
-      overlay.style.position = "fixed";
-      overlay.style.inset = "0";
-      overlay.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-      popup.append(overlay);
+      popup.className = "modal fade";
+      popup.style.display = "none";
+      popup.style.paddingRight = "12px";
 
       const panel = documentRef.createElement("div");
       panel.id = POPUP_PANEL_ID;
-      panel.style.position = "relative";
-      panel.style.width = "100%";
-      panel.style.maxWidth = "37.5rem";
-      panel.style.margin = "2rem auto";
-      panel.style.boxSizing = "border-box";
-      panel.style.border = "1px solid rgba(0, 0, 0, 0.2)";
-      panel.style.borderRadius = "0.375rem";
-      panel.style.backgroundColor = "#ffffff";
-      panel.style.color = "#333333";
-      panel.style.boxShadow = "0 0.3125rem 0.9375rem rgba(0, 0, 0, 0.5)";
-      panel.style.zIndex = "1";
+      panel.className = "modal-dialog";
+      panel.setAttribute("role", "document");
       popup.append(panel);
+
+      const content = documentRef.createElement("div");
+      content.className = "modal-content";
+      panel.append(content);
 
       const header = documentRef.createElement("div");
       header.id = POPUP_HEADER_ID;
-      header.style.display = "flex";
-      header.style.alignItems = "center";
-      header.style.justifyContent = "space-between";
-      header.style.gap = "0.75rem";
-      header.style.padding = "0.9375rem 0.9375rem 0";
-      panel.append(header);
+      header.className = "modal-header";
+      content.append(header);
 
       const body = documentRef.createElement("div");
       body.id = POPUP_BODY_ID;
-      body.style.padding = "0.9375rem";
-      panel.append(body);
+      body.className = "modal-body";
+      content.append(body);
 
       const footer = documentRef.createElement("div");
       footer.id = POPUP_FOOTER_ID;
-      footer.style.display = "flex";
-      footer.style.justifyContent = "space-between";
-      footer.style.alignItems = "center";
-      footer.style.gap = "0.75rem";
-      footer.style.padding = "0 0.9375rem 0.9375rem";
-      panel.append(footer);
+      footer.className = "modal-footer";
+      content.append(footer);
 
-      const title = documentRef.createElement("h2");
+      const overlay = documentRef.createElement("div");
+      overlay.id = POPUP_OVERLAY_ID;
+      overlay.className = "modal-backdrop fade";
+
+      const title = documentRef.createElement("h4");
       title.id = POPUP_TITLE_ID;
-      title.textContent = "今日の一問";
-      title.style.margin = "0";
-      title.style.fontSize = "1.125rem";
-      title.style.fontWeight = "600";
-      title.style.lineHeight = "1.4";
-      header.append(title);
+      title.textContent = "ac-revisit";
+      title.className = "modal-title";
 
       const closeButton = documentRef.createElement("button");
       closeButton.id = POPUP_CLOSE_ID;
       closeButton.type = "button";
-      closeButton.textContent = "×";
+      closeButton.className = "close";
       closeButton.setAttribute("aria-label", "閉じる");
-      closeButton.style.border = "0";
-      closeButton.style.background = "transparent";
-      closeButton.style.color = "#777777";
-      closeButton.style.fontSize = "1.5rem";
-      closeButton.style.lineHeight = "1";
-      closeButton.style.padding = "0";
-      closeButton.style.cursor = "pointer";
+      closeButton.setAttribute("data-dismiss", "modal");
+      const closeMark = documentRef.createElement("span");
+      closeMark.setAttribute("aria-hidden", "true");
+      closeMark.textContent = "×";
+      closeButton.append(closeMark);
       header.append(closeButton);
+      header.append(title);
 
-      const triggerLabel = documentRef.createElement("p");
-      triggerLabel.dataset.role = POPUP_TRIGGER_ROLE;
-      triggerLabel.style.margin = "0 0 0.75rem 0";
-      triggerLabel.style.fontSize = "0.875rem";
-      triggerLabel.style.color = "#777777";
-      body.append(triggerLabel);
+      const sectionTitle = documentRef.createElement("h3");
+      sectionTitle.id = POPUP_SECTION_TITLE_ID;
+      sectionTitle.textContent = "今日の一問";
+      sectionTitle.className = "h5";
+      sectionTitle.style.marginTop = "0";
+      sectionTitle.style.marginBottom = "0.375rem";
+      body.append(sectionTitle);
+
+      const description = documentRef.createElement("p");
+      description.id = POPUP_DESCRIPTION_ID;
+      description.textContent = "解く問題がある日は完了、終わった日はもう一問で次へ進めます。";
+      description.className = "small text-muted";
+      description.style.marginTop = "0";
+      description.style.marginBottom = "1.25rem";
+      body.append(description);
 
       const todayLink = documentRef.createElement("a");
       todayLink.id = POPUP_TODAY_LINK_ID;
+      todayLink.className = "";
       todayLink.setAttribute("href", "#");
-      todayLink.style.display = "block";
-      todayLink.style.minHeight = "2.75rem";
+      todayLink.style.whiteSpace = "normal";
       todayLink.style.wordBreak = "break-word";
-      todayLink.style.padding = "0.75rem 0.875rem";
-      todayLink.style.border = "1px solid #dddddd";
-      todayLink.style.borderRadius = "0.25rem";
-      todayLink.style.backgroundColor = "#f9f9f9";
-      todayLink.style.lineHeight = "1.5";
+      todayLink.style.display = "inline-block";
+      todayLink.style.marginTop = "0";
+      todayLink.style.marginBottom = "1.25rem";
+      todayLink.style.lineHeight = "1.4";
       body.append(todayLink);
 
       const actionButton = documentRef.createElement("button");
       actionButton.id = POPUP_ACTION_ID;
       actionButton.type = "button";
-      actionButton.style.minWidth = "7rem";
-      actionButton.style.padding = "0.375rem 0.75rem";
-      actionButton.style.border = "1px solid transparent";
-      actionButton.style.borderRadius = "0.25rem";
-      actionButton.style.backgroundColor = "#337ab7";
-      actionButton.style.borderColor = "#2e6da4";
-      actionButton.style.color = "#ffffff";
-      actionButton.style.cursor = "pointer";
-      footer.append(actionButton);
+      actionButton.className = "btn btn-primary";
+      actionButton.style.display = "block";
+      body.append(actionButton);
 
       const dismissButton = documentRef.createElement("button");
       dismissButton.id = POPUP_DISMISS_ID;
       dismissButton.type = "button";
-      dismissButton.textContent = "閉じる";
-      dismissButton.style.padding = "0.375rem 0.75rem";
-      dismissButton.style.border = "1px solid #cccccc";
-      dismissButton.style.borderRadius = "0.25rem";
-      dismissButton.style.backgroundColor = "#ffffff";
-      dismissButton.style.color = "#333333";
-      dismissButton.style.cursor = "pointer";
+      dismissButton.textContent = "close";
+      dismissButton.className = "btn btn-default";
+      dismissButton.setAttribute("data-dismiss", "modal");
       footer.append(dismissButton);
 
       documentRef.body.append(popup);
+      documentRef.body.append(overlay);
     }
 
     popup.dataset.source = input.source;
     popup.dataset.status = input.reviewWorkspace.dailyState.status;
     popup.dataset.activeProblemId = input.reviewWorkspace.dailyState.activeProblemId ?? "";
-    popup.dataset.lastDailyEvaluatedOn = input.reviewWorkspace.dailyState.lastDailyEvaluatedOn ?? "";
+    popup.dataset.lastDailyEvaluatedOn =
+      input.reviewWorkspace.dailyState.lastDailyEvaluatedOn ?? "";
+    popup.dataset.state = "open";
     popup.setAttribute("aria-labelledby", POPUP_TITLE_ID);
-    const overlay = popup.querySelector<HTMLDivElement>(`#${POPUP_OVERLAY_ID}`);
+    const overlay = documentRef.getElementById(POPUP_OVERLAY_ID);
     const closeButton = popup.querySelector<HTMLButtonElement>(`#${POPUP_CLOSE_ID}`);
     const dismissButton = popup.querySelector<HTMLButtonElement>(`#${POPUP_DISMISS_ID}`);
-    const triggerLabel = popup.querySelector<HTMLElement>("[data-role='trigger']");
+    const description = popup.querySelector<HTMLParagraphElement>(`#${POPUP_DESCRIPTION_ID}`);
     const todayLink = popup.querySelector<HTMLAnchorElement>(`#${POPUP_TODAY_LINK_ID}`);
     const actionButton = popup.querySelector<HTMLButtonElement>(`#${POPUP_ACTION_ID}`);
 
@@ -273,13 +249,6 @@ export function createPopupShellPresenter(
       !popup.contains(documentRef.activeElement)
     ) {
       lastFocusedElement = documentRef.activeElement;
-    }
-
-    if (triggerLabel !== null) {
-      triggerLabel.textContent =
-        input.source === "bootstrap"
-          ? `${input.today} の自動通知`
-          : `${input.today} のメニュー操作`;
     }
 
     if (todayLink !== null) {
@@ -292,29 +261,31 @@ export function createPopupShellPresenter(
         todayLink.href = toProblemPath(input.reviewWorkspace.dailyState.activeProblemId);
         todayLink.removeAttribute("aria-disabled");
         todayLink.removeAttribute("data-muted");
-        todayLink.style.color = "#337ab7";
+        todayLink.className = "";
         todayLink.style.pointerEvents = "";
-        todayLink.style.textDecoration = "none";
-        todayLink.style.backgroundColor = "#ffffff";
-        todayLink.style.borderColor = "#d9edf7";
+        todayLink.style.color = "";
       } else {
         todayLink.removeAttribute("href");
         todayLink.setAttribute("aria-disabled", "true");
         todayLink.dataset.muted = "true";
-        todayLink.style.color = "#777777";
+        todayLink.className = "text-muted";
         todayLink.style.pointerEvents = "none";
-        todayLink.style.textDecoration = "none";
-        todayLink.style.backgroundColor = "#f5f5f5";
-        todayLink.style.borderColor = "#e5e5e5";
+        todayLink.style.color = "#777777";
       }
+    }
+
+    if (description !== null) {
+      description.textContent = input.viewModel.description;
     }
 
     if (actionButton !== null) {
       actionButton.textContent = input.viewModel.primaryActionLabel;
       actionButton.disabled = !input.viewModel.primaryAction.enabled;
-      actionButton.style.backgroundColor = input.viewModel.primaryAction.enabled ? "#337ab7" : "#d9d9d9";
-      actionButton.style.borderColor = input.viewModel.primaryAction.enabled ? "#2e6da4" : "#cccccc";
-      actionButton.style.color = input.viewModel.primaryAction.enabled ? "#ffffff" : "#666666";
+      if (input.viewModel.primaryAction.enabled) {
+        actionButton.className = "btn btn-primary";
+      } else {
+        actionButton.className = "btn btn-default";
+      }
       actionButton.style.cursor = input.viewModel.primaryAction.enabled ? "pointer" : "not-allowed";
     }
 
@@ -386,6 +357,7 @@ export function createPopupShellPresenter(
       }
     };
 
+    showModal(popup, overlay);
     popup.focus();
   };
 
@@ -448,13 +420,55 @@ export function createPopupShellPresenter(
   }
 
   function dismissPopup(popup: HTMLElement) {
-    popup.remove();
-
-    if (lastFocusedElement !== null && documentRef.contains(lastFocusedElement)) {
-      lastFocusedElement.focus();
+    if (popup.dataset.state === "closing") {
+      return;
     }
 
-    lastFocusedElement = null;
+    popup.dataset.state = "closing";
+    const overlay = documentRef.getElementById(POPUP_OVERLAY_ID);
+    popup.classList.remove("in");
+    overlay?.classList.remove("in");
+
+    const removePopup = () => {
+      if (popup.isConnected) {
+        popup.remove();
+      }
+      overlay?.remove();
+      popup.style.display = "none";
+      unlockPageScroll();
+
+      if (lastFocusedElement !== null && documentRef.contains(lastFocusedElement)) {
+        lastFocusedElement.focus();
+      }
+
+      lastFocusedElement = null;
+    };
+
+    const timerHost = documentRef.defaultView ?? window;
+    timerHost.setTimeout(removePopup, 300);
+  }
+
+  function showModal(popup: HTMLElement, overlay: HTMLElement | null) {
+    popup.style.display = "block";
+    popup.classList.remove("in");
+    overlay?.classList.remove("in");
+    lockPageScroll();
+    void popup.offsetWidth;
+    popup.classList.add("in");
+    overlay?.classList.add("in");
+  }
+
+  function lockPageScroll() {
+    if (!documentRef.body.classList.contains("modal-open")) {
+      documentRef.body.classList.add("modal-open");
+      previousBodyPaddingRight = documentRef.body.style.paddingRight;
+    }
+    documentRef.body.style.paddingRight = "12px";
+  }
+
+  function unlockPageScroll() {
+    documentRef.body.classList.remove("modal-open");
+    documentRef.body.style.paddingRight = previousBodyPaddingRight ?? "";
   }
 }
 

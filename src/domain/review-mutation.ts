@@ -56,12 +56,8 @@ export type MutationError =
 export interface ReviewMutationService {
   registerProblem(input: RegisterProblemInput): Result<MutationOutcome, MutationError>;
   unregisterProblem(input: UnregisterProblemInput): Result<MutationOutcome, MutationError>;
-  completeTodayProblem(
-    input: CompleteTodayProblemInput,
-  ): Result<MutationOutcome, MutationError>;
-  fetchNextTodayProblem(
-    input: FetchNextTodayProblemInput,
-  ): Result<MutationOutcome, MutationError>;
+  completeTodayProblem(input: CompleteTodayProblemInput): Result<MutationOutcome, MutationError>;
+  fetchNextTodayProblem(input: FetchNextTodayProblemInput): Result<MutationOutcome, MutationError>;
 }
 
 export function createReviewMutationService({
@@ -119,8 +115,7 @@ export function createReviewMutationService({
       const reviewItems = latestWorkspace.value.reviewItems.filter(
         (item) => item.problemId !== input.problemId,
       );
-      const isActiveProblem =
-        latestWorkspace.value.dailyState.activeProblemId === input.problemId;
+      const isActiveProblem = latestWorkspace.value.dailyState.activeProblemId === input.problemId;
       return writeWorkspace(reviewStore, {
         reviewItems,
         dailyState: isActiveProblem
@@ -151,10 +146,7 @@ export function createReviewMutationService({
 
       const activeProblemId = latestWorkspace.value.dailyState.activeProblemId;
 
-      if (
-        latestWorkspace.value.dailyState.status !== "incomplete" ||
-        activeProblemId === null
-      ) {
+      if (latestWorkspace.value.dailyState.status !== "incomplete" || activeProblemId === null) {
         return failure({ kind: "today_problem_absent" });
       }
 

@@ -15,6 +15,8 @@ AtCoder 上で動作する Tampermonkey 向け userscript です。
 npm install
 ```
 
+`npm install` 時に `prepare` が実行され、`husky` のフックが有効化されます。`pre-commit` では `lint-staged`（ステージ済みファイルのみ整形+lint）を実行し、`pre-push` では `npm run verify` を実行します。
+
 ## 開発フロー（コピペ不要）
 
 1. 開発サーバー起動
@@ -32,6 +34,7 @@ http://127.0.0.1:4310/ac-revisit.dev.user.js
 3. 以後はコード変更ごとに自動再ビルドされるので、AtCoder ページを再読み込みして確認
 
 補足:
+
 - `127.0.0.1` 固定は IPv4/IPv6 解決差異を避けるためです。
 - ポート変更が必要なら `PORT=xxxx npm run dev` を使えます。
 - `npm run dev` のたびに dev 用 `@version` が自動更新されるため、Tampermonkey の「更新を確認」で反映できます。
@@ -41,6 +44,15 @@ http://127.0.0.1:4310/ac-revisit.dev.user.js
 ```bash
 # lint + typecheck + test
 npm run verify
+
+# format check
+npm run format:check
+
+# 自動整形
+npm run format
+
+# ステージ済みファイルのみ整形+lint（pre-commit と同じ）
+npm run lint-staged
 
 # 単体テスト
 npm test

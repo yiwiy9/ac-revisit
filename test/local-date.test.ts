@@ -7,9 +7,7 @@ import {
 } from "../src/shared/date.ts";
 
 test("LocalDateProvider normalizes browser-local dates into canonical keys", () => {
-  const provider = createLocalDateProvider(
-    () => new Date("2026-01-02T12:00:00Z"),
-  );
+  const provider = createLocalDateProvider(() => new Date("2026-01-02T12:00:00Z"));
 
   expect(provider.today()).toBe("2026-01-02");
 });

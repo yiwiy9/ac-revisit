@@ -14,6 +14,7 @@ export interface PopupActionState {
 export interface PopupViewModel {
   readonly todayLink: PopupActionState;
   readonly todayLinkLabel: string;
+  readonly description: string;
   readonly primaryAction: PopupActionState;
   readonly primaryActionLabel: "もう一問" | "完了";
   readonly primaryActionKind: "fetch_next" | "complete";
@@ -31,19 +32,41 @@ export function createPopupViewModelFactory(): PopupViewModelFactory {
       );
       const hasActiveIncompleteSuggestion =
         input.dailyState.status === "incomplete" && input.dailyState.activeProblemId !== null;
-      const primaryActionKind = hasActiveIncompleteSuggestion ? "complete" : "fetch_next";
+      const hasCompletedTodaySuggestion =
+        input.dailyState.status === "complete" && input.dailyState.activeProblemId !== null;
+      const canFetchNextSuggestion =
+        input.dailyState.status === "complete" && input.hasDueCandidates === true;
+      const primaryActionKind =
+        hasActiveIncompleteSuggestion === true
+          ? "complete"
+          : hasCompletedTodaySuggestion === true || canFetchNextSuggestion === true
+            ? "fetch_next"
+            : "complete";
       const primaryActionEnabled =
-        primaryActionKind === "complete" ? true : input.hasDueCandidates === true;
+        hasActiveIncompleteSuggestion === true || canFetchNextSuggestion === true;
 
       return {
         todayLink: hasActiveIncompleteSuggestion
           ? { enabled: true, presentation: "normal" }
           : { enabled: false, presentation: "grayed" },
-        todayLinkLabel: activeReviewItem?.problemTitle ?? "問題未選択",
+        todayLinkLabel: activeReviewItem?.problemTitle ?? "今日の一問はありません",
+        description:
+          hasActiveIncompleteSuggestion === true
+            ? "今日の復習対象です。解き終えたら完了で記録できます。"
+            : canFetchNextSuggestion === true
+              ? "今日の一問は完了済みです。必要ならもう一問で次に進めます。"
+              : hasCompletedTodaySuggestion === true
+                ? "今日の一問は完了済みです。次に進める復習対象はありません。"
+                : "復習対象がありません。追加した問題は14日後に今日の一問として表示されます。",
         primaryAction: primaryActionEnabled
           ? { enabled: true, presentation: "normal" }
           : { enabled: false, presentation: "grayed" },
-        primaryActionLabel: primaryActionKind === "complete" ? "完了" : "もう一問",
+        primaryActionLabel:
+          hasActiveIncompleteSuggestion === true
+            ? "完了"
+            : hasCompletedTodaySuggestion === true || canFetchNextSuggestion === true
+              ? "もう一問"
+              : "完了",
         primaryActionKind,
       };
     },

@@ -36,10 +36,7 @@ export function createCandidateSelectionService({
         };
       }
 
-      const index = Math.min(
-        dueCandidates.length - 1,
-        Math.floor(random() * dueCandidates.length),
-      );
+      const index = Math.min(dueCandidates.length - 1, Math.floor(random() * dueCandidates.length));
 
       return {
         ok: true,

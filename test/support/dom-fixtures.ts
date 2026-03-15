@@ -42,7 +42,10 @@ export function topPageHeaderHtml(userHandle = "tourist") {
 }
 
 /** Returns a problem-page heading block with an optional commentary link. */
-export function problemHeadingHtml(title = "D - Coming of Age Celebration", withCommentaryLink = false) {
+export function problemHeadingHtml(
+  title = "D - Coming of Age Celebration",
+  withCommentaryLink = false,
+) {
   return `
     <div class="col-sm-12">
       <span class="h2">

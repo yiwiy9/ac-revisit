@@ -29,7 +29,9 @@ export function createWorkspaceStoreDouble(
 
         return { ok: true, value: currentWorkspace };
       },
-      writeWorkspace(nextWorkspace: ReviewWorkspace): Result<ReviewWorkspace, StorageUnavailableError> {
+      writeWorkspace(
+        nextWorkspace: ReviewWorkspace,
+      ): Result<ReviewWorkspace, StorageUnavailableError> {
         writes.push(nextWorkspace);
 
         if (failOnWrite) {

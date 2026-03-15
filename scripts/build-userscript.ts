@@ -86,9 +86,7 @@ export async function buildUserscript({
   }
 
   if (missingFields.length > 0) {
-    throw new Error(
-      `Missing required package metadata: ${missingFields.join(", ")}`,
-    );
+    throw new Error(`Missing required package metadata: ${missingFields.join(", ")}`);
   }
 
   const packageName = packageJson.name as string;

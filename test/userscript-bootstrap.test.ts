@@ -132,8 +132,8 @@ describe("bootstrapUserscript", () => {
     const rerunResult = bootstrapUserscript({ reviewStorage: storageDouble.storage });
     const entries = domDocument.querySelectorAll("#ac-revisit-menu-entry");
     const predictorEntries = domDocument.querySelectorAll("#ac-predictor-settings-dropdown-button");
-    const logoutEntries = Array.from(domDocument.querySelectorAll(".header-mypage_list a")).filter((link) =>
-      (link.textContent ?? "").includes("ログアウト"),
+    const logoutEntries = Array.from(domDocument.querySelectorAll(".header-mypage_list a")).filter(
+      (link) => (link.textContent ?? "").includes("ログアウト"),
     );
     const remountedEntry = domDocument.querySelector<HTMLLIElement>("#ac-revisit-menu-entry");
 
@@ -351,7 +351,7 @@ describe("bootstrapUserscript", () => {
     expect(popup?.getAttribute("data-last-daily-evaluated-on")).toBe("2026-03-02");
     expect(overlay).toBeTruthy();
     expect(panel).toBeTruthy();
-    expect(title?.textContent).toBe("今日の一問");
+    expect(title?.textContent).toBe("ac-revisit");
     expect(actionButton?.textContent).toBe("完了");
   });
 
@@ -388,9 +388,7 @@ describe("bootstrapUserscript", () => {
     const menuLink = domDocument.querySelector("#ac-revisit-menu-entry-link");
     expect(menuLink).toBeTruthy();
 
-    menuLink?.dispatchEvent(
-      new domWindow.MouseEvent("click", { bubbles: true, cancelable: true }),
-    );
+    menuLink?.dispatchEvent(new domWindow.MouseEvent("click", { bubbles: true, cancelable: true }));
 
     expect(popupCalls).toEqual([
       {
@@ -436,15 +434,13 @@ describe("bootstrapUserscript", () => {
       "bootstrap",
     );
 
-    menuLink?.dispatchEvent(
-      new domWindow.MouseEvent("click", { bubbles: true, cancelable: true }),
-    );
+    menuLink?.dispatchEvent(new domWindow.MouseEvent("click", { bubbles: true, cancelable: true }));
 
     expect(domDocument.querySelectorAll("#ac-revisit-popup-root")).toHaveLength(1);
     expect(domDocument.querySelector("#ac-revisit-popup-root")?.getAttribute("data-source")).toBe(
       "menu",
     );
-    expect(domDocument.querySelector("#ac-revisit-popup-title")?.textContent).toBe("今日の一問");
+    expect(domDocument.querySelector("#ac-revisit-popup-title")?.textContent).toBe("ac-revisit");
     expect(domDocument.querySelector("#ac-revisit-popup-action")?.textContent).toBe("完了");
   });
 
@@ -477,9 +473,7 @@ describe("bootstrapUserscript", () => {
     const menuLink = domDocument.querySelector("#ac-revisit-menu-entry-link");
     expect(menuLink).toBeTruthy();
 
-    menuLink?.dispatchEvent(
-      new domWindow.MouseEvent("click", { bubbles: true, cancelable: true }),
-    );
+    menuLink?.dispatchEvent(new domWindow.MouseEvent("click", { bubbles: true, cancelable: true }));
 
     const todayLink = domDocument.querySelector<HTMLAnchorElement>("#ac-revisit-popup-today-link");
     const actionButton = domDocument.querySelector<HTMLButtonElement>("#ac-revisit-popup-action");
@@ -492,7 +486,7 @@ describe("bootstrapUserscript", () => {
     );
     expect(todayLink?.textContent).toBeTruthy();
     expect(todayLink?.getAttribute("aria-disabled")).toBe("true");
-    expect(actionButton?.textContent).toBe("もう一問");
+    expect(actionButton?.textContent).toBe("完了");
     expect(actionButton?.disabled).toBe(true);
   });
 

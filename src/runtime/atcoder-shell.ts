@@ -6,7 +6,7 @@ const TOP_PAGE_MYPAGE_SELECTOR = ".header-mypage";
 const TOP_PAGE_MENU_SELECTOR = ".header-mypage_detail .header-mypage_list";
 const PROBLEM_HEADING_SELECTOR = ".col-sm-12 > span.h2";
 const PROBLEM_COMMENTARY_LINK_SELECTOR = `${PROBLEM_HEADING_SELECTOR} > a.btn`;
-const SUBMISSION_TASK_LINK_SELECTOR = ".col-sm-12 table a[href*=\"/tasks/\"]";
+const SUBMISSION_TASK_LINK_SELECTOR = '.col-sm-12 table a[href*="/tasks/"]';
 
 export const MENU_ENTRY_ID = "ac-revisit-menu-entry";
 export const MENU_ENTRY_LINK_ID = "ac-revisit-menu-entry-link";
@@ -421,7 +421,9 @@ function findLegacyUserMenuAnchor(documentRef: Document): HTMLElement | null {
 
   for (const candidate of candidates) {
     const hasLogoutEntry = findMenuItem(candidate, (href, label) => {
-      return href.startsWith("/logout") || href.includes("form_logout") || label.includes("ログアウト");
+      return (
+        href.startsWith("/logout") || href.includes("form_logout") || label.includes("ログアウト")
+      );
     });
     const hasSettingsEntry = findMenuItem(candidate, (href, label) => {
       return href.startsWith("/settings") || label.includes("設定");
@@ -523,7 +525,9 @@ function appendMenuLinkContents(
 
 function insertMenuItem(menuElement: HTMLElement, item: HTMLLIElement): void {
   const logoutItem = findMenuItem(menuElement, (href, label) => {
-    return href.startsWith("/logout") || href.includes("form_logout") || label.includes("ログアウト");
+    return (
+      href.startsWith("/logout") || href.includes("form_logout") || label.includes("ログアウト")
+    );
   });
 
   if (logoutItem instanceof HTMLElement) {
@@ -610,7 +614,10 @@ function findMenuItem(
   });
 }
 
-function insertRelative(anchor: Extract<DomAnchorResult, { kind: "found" }>, element: HTMLElement): void {
+function insertRelative(
+  anchor: Extract<DomAnchorResult, { kind: "found" }>,
+  element: HTMLElement,
+): void {
   if (anchor.insertMode === "afterend") {
     anchor.element.insertAdjacentElement("afterend", element);
     return;

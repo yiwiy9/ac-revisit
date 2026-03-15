@@ -28,9 +28,7 @@ function parseLocalDateKey(value: LocalDateKey): Date {
   return new Date(Date.UTC(year, month - 1, day));
 }
 
-export function createLocalDateProvider(
-  now: () => Date = () => new Date(),
-): LocalDateProvider {
+export function createLocalDateProvider(now: () => Date = () => new Date()): LocalDateProvider {
   return {
     today() {
       return formatLocalDate(now());

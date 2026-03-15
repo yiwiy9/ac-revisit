@@ -12,6 +12,8 @@ const domDocument = globalThis.document;
 
 function clearDocument() {
   domDocument.body.innerHTML = "";
+  domDocument.body.className = "";
+  domDocument.body.style.paddingRight = "";
   domWindow.history.replaceState({}, "", "/");
 }
 
@@ -77,27 +79,42 @@ test("PopupShellPresenter renders one shared popup skeleton for both menu and bo
   const body = domDocument.querySelector("#ac-revisit-popup-body");
   const footer = domDocument.querySelector("#ac-revisit-popup-footer");
   const heading = domDocument.querySelector("#ac-revisit-popup-title");
+  const sectionTitle = domDocument.querySelector("#ac-revisit-popup-section-title");
+  const description = domDocument.querySelector("#ac-revisit-popup-description");
   const closeButton = domDocument.querySelector("#ac-revisit-popup-close");
   const footerCloseButton = domDocument.querySelector("#ac-revisit-popup-dismiss");
+  const todayLink = domDocument.querySelector("#ac-revisit-popup-today-link");
   const actionButton = domDocument.querySelector("#ac-revisit-popup-action");
+  const styleTag = domDocument.querySelector("#ac-revisit-popup-style");
 
   expect(root).toBeTruthy();
   expect(root?.getAttribute("role")).toBe("dialog");
   expect(root?.getAttribute("aria-modal")).toBe("true");
   expect(root?.getAttribute("data-source")).toBe("menu");
+  expect(root?.className).toBe("modal fade in");
+  expect((root as HTMLElement | null)?.style.display).toBe("block");
+  expect((root as HTMLElement | null)?.style.paddingRight).toBe("12px");
   expect(overlay).toBeTruthy();
+  expect(overlay?.className).toBe("modal-backdrop fade in");
   expect(panel).toBeTruthy();
   expect(header).toBeTruthy();
   expect(body).toBeTruthy();
   expect(footer).toBeTruthy();
-  expect(heading?.textContent).toBe("今日の一問");
+  expect(heading?.textContent).toBe("ac-revisit");
+  expect(sectionTitle?.textContent).toBe("今日の一問");
+  expect(description?.textContent).toBe("今日の復習対象です。解き終えたら完了で記録できます。");
   expect(closeButton?.textContent).toBe("×");
   expect(closeButton?.getAttribute("aria-label")).toBe("閉じる");
-  expect(footerCloseButton?.textContent).toBe("閉じる");
+  expect(footerCloseButton?.textContent).toBe("close");
   expect(actionButton?.tagName).toBe("BUTTON");
-  expect((panel as HTMLElement | null)?.style.maxWidth).toBe("37.5rem");
-  expect((panel as HTMLElement | null)?.style.width).toBe("100%");
-  expect((panel as HTMLElement | null)?.style.backgroundColor).toBe("rgb(255, 255, 255)");
+  expect(todayLink?.className).toBe("");
+  expect(actionButton?.className).toBe("btn btn-primary");
+  expect(footerCloseButton?.className).toBe("btn btn-default");
+  expect((header as HTMLElement | null)?.firstElementChild?.id).toBe("ac-revisit-popup-close");
+  expect((body as HTMLElement | null)?.lastElementChild?.id).toBe("ac-revisit-popup-action");
+  expect(styleTag).toBeNull();
+  expect(domDocument.body.className).toBe("modal-open");
+  expect(domDocument.body.style.paddingRight).toBe("12px");
 
   presentPopup(
     buildSnapshot({
@@ -124,7 +141,7 @@ test("PopupShellPresenter renders one shared popup skeleton for both menu and bo
   );
 });
 
-test("PopupShellPresenter dismisses the popup from the close button, overlay, and Escape key", () => {
+test("PopupShellPresenter dismisses the popup from the close button, overlay, and Escape key", async () => {
   clearDocument();
 
   const presentPopup = createPopupShellPresenter(domDocument);
@@ -149,25 +166,41 @@ test("PopupShellPresenter dismisses the popup from the close button, overlay, an
   domDocument
     .querySelector<HTMLButtonElement>("#ac-revisit-popup-close")
     ?.dispatchEvent(new domWindow.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await new Promise((resolve) => domWindow.setTimeout(resolve, 320));
   expect(domDocument.querySelector("#ac-revisit-popup-root")).toBeNull();
+  expect(domDocument.querySelector("#ac-revisit-popup-overlay")).toBeNull();
+  expect(domDocument.body.className).toBe("");
+  expect(domDocument.body.style.paddingRight).toBe("");
 
   presentPopup(snapshot);
   domDocument
     .querySelector<HTMLButtonElement>("#ac-revisit-popup-dismiss")
     ?.dispatchEvent(new domWindow.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await new Promise((resolve) => domWindow.setTimeout(resolve, 320));
   expect(domDocument.querySelector("#ac-revisit-popup-root")).toBeNull();
+  expect(domDocument.querySelector("#ac-revisit-popup-overlay")).toBeNull();
+  expect(domDocument.body.className).toBe("");
+  expect(domDocument.body.style.paddingRight).toBe("");
 
   presentPopup(snapshot);
   domDocument
     .querySelector<HTMLDivElement>("#ac-revisit-popup-overlay")
     ?.dispatchEvent(new domWindow.MouseEvent("click", { bubbles: true, cancelable: true }));
+  await new Promise((resolve) => domWindow.setTimeout(resolve, 320));
   expect(domDocument.querySelector("#ac-revisit-popup-root")).toBeNull();
+  expect(domDocument.querySelector("#ac-revisit-popup-overlay")).toBeNull();
+  expect(domDocument.body.className).toBe("");
+  expect(domDocument.body.style.paddingRight).toBe("");
 
   presentPopup(snapshot);
   domDocument
     .querySelector<HTMLElement>("#ac-revisit-popup-root")
     ?.dispatchEvent(new domWindow.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  await new Promise((resolve) => domWindow.setTimeout(resolve, 320));
   expect(domDocument.querySelector("#ac-revisit-popup-root")).toBeNull();
+  expect(domDocument.querySelector("#ac-revisit-popup-overlay")).toBeNull();
+  expect(domDocument.body.className).toBe("");
+  expect(domDocument.body.style.paddingRight).toBe("");
 });
 
 test("PopupShellPresenter enables the today link and labels the action as complete while today's problem is incomplete", () => {
@@ -197,14 +230,18 @@ test("PopupShellPresenter enables the today link and labels the action as comple
 
   const todayLink = domDocument.querySelector<HTMLAnchorElement>("#ac-revisit-popup-today-link");
   const actionButton = domDocument.querySelector<HTMLButtonElement>("#ac-revisit-popup-action");
+  const description = domDocument.querySelector<HTMLParagraphElement>(
+    "#ac-revisit-popup-description",
+  );
 
   expect(todayLink?.textContent).toBe("A - Happy Birthday!");
   expect(todayLink?.getAttribute("href")).toBe("/contests/abc100/tasks/abc100_a");
   expect(todayLink?.getAttribute("aria-disabled")).toBeNull();
-  expect(todayLink?.style.backgroundColor).toBe("rgb(255, 255, 255)");
+  expect(todayLink?.className).toBe("");
+  expect(description?.textContent).toBe("今日の復習対象です。解き終えたら完了で記録できます。");
   expect(actionButton?.textContent).toBe("完了");
   expect(actionButton?.disabled).toBe(false);
-  expect(actionButton?.style.backgroundColor).toBe("rgb(51, 122, 183)");
+  expect(actionButton?.className).toBe("btn btn-primary");
 });
 
 test("PopupShellPresenter grays out the today link and disables the next action when no due candidates remain", () => {
@@ -234,15 +271,22 @@ test("PopupShellPresenter grays out the today link and disables the next action 
 
   const todayLink = domDocument.querySelector<HTMLAnchorElement>("#ac-revisit-popup-today-link");
   const actionButton = domDocument.querySelector<HTMLButtonElement>("#ac-revisit-popup-action");
+  const description = domDocument.querySelector<HTMLParagraphElement>(
+    "#ac-revisit-popup-description",
+  );
 
   expect(todayLink?.textContent).toBe("A - Happy Birthday!");
   expect(todayLink?.hasAttribute("href")).toBe(false);
   expect(todayLink?.getAttribute("aria-disabled")).toBe("true");
   expect(todayLink?.getAttribute("data-muted")).toBe("true");
-  expect(todayLink?.style.backgroundColor).toBe("rgb(245, 245, 245)");
+  expect(todayLink?.className).toBe("text-muted");
+  expect(description?.textContent).toBe(
+    "今日の一問は完了済みです。次に進める復習対象はありません。",
+  );
   expect(actionButton?.textContent).toBe("もう一問");
   expect(actionButton?.disabled).toBe(true);
   expect(actionButton?.style.cursor).toBe("not-allowed");
+  expect(actionButton?.className).toBe("btn btn-default");
 });
 
 test("PopupShellPresenter enables the next action when today's problem is complete and due candidates remain", () => {
@@ -272,13 +316,58 @@ test("PopupShellPresenter enables the next action when today's problem is comple
 
   const todayLink = domDocument.querySelector<HTMLAnchorElement>("#ac-revisit-popup-today-link");
   const actionButton = domDocument.querySelector<HTMLButtonElement>("#ac-revisit-popup-action");
+  const description = domDocument.querySelector<HTMLParagraphElement>(
+    "#ac-revisit-popup-description",
+  );
 
   expect(todayLink?.textContent).toBe("A - Happy Birthday!");
   expect(todayLink?.hasAttribute("href")).toBe(false);
   expect(todayLink?.getAttribute("aria-disabled")).toBe("true");
   expect(todayLink?.getAttribute("data-muted")).toBe("true");
+  expect(todayLink?.className).toBe("text-muted");
+  expect(description?.textContent).toBe(
+    "今日の一問は完了済みです。必要ならもう一問で次に進めます。",
+  );
   expect(actionButton?.textContent).toBe("もう一問");
   expect(actionButton?.disabled).toBe(false);
+  expect(actionButton?.className).toBe("btn btn-primary");
+});
+
+test("PopupShellPresenter disables complete when neither today's suggestion nor due candidates exist", () => {
+  clearDocument();
+
+  const presentPopup = createPopupShellPresenter(domDocument);
+
+  presentPopup(
+    buildSnapshot({
+      source: "menu",
+      today: "2026-03-02",
+      reviewItems: [],
+      dailyState: {
+        activeProblemId: null,
+        status: "complete",
+        lastDailyEvaluatedOn: "2026-03-02",
+      },
+      hasDueCandidates: false,
+    }),
+  );
+
+  const todayLink = domDocument.querySelector<HTMLAnchorElement>("#ac-revisit-popup-today-link");
+  const actionButton = domDocument.querySelector<HTMLButtonElement>("#ac-revisit-popup-action");
+  const description = domDocument.querySelector<HTMLParagraphElement>(
+    "#ac-revisit-popup-description",
+  );
+
+  expect(todayLink?.textContent).toBe("今日の一問はありません");
+  expect(todayLink?.hasAttribute("href")).toBe(false);
+  expect(todayLink?.getAttribute("aria-disabled")).toBe("true");
+  expect(todayLink?.className).toBe("text-muted");
+  expect(description?.textContent).toBe(
+    "復習対象がありません。追加した問題は14日後に今日の一問として表示されます。",
+  );
+  expect(actionButton?.textContent).toBe("完了");
+  expect(actionButton?.disabled).toBe(true);
+  expect(actionButton?.className).toBe("btn btn-default");
 });
 
 test("PopupStateLoader reads the latest workspace in readonly mode without requiring popup refresh", () => {
@@ -394,9 +483,13 @@ test("PopupShellPresenter silently re-renders the popup and blocks stale today-l
     domDocument.querySelector("#ac-revisit-popup-root")?.getAttribute("data-active-problem-id"),
   ).toBe("abc100/abc100_b");
   expect(
-    domDocument.querySelector("#ac-revisit-popup-root")?.getAttribute("data-last-daily-evaluated-on"),
+    domDocument
+      .querySelector("#ac-revisit-popup-root")
+      ?.getAttribute("data-last-daily-evaluated-on"),
   ).toBe("2026-03-03");
   expect(todayLink?.textContent).toBe("B - Ringo's Favorite Numbers");
+  expect(domDocument.body.className).toBe("modal-open");
+  expect(domDocument.body.style.paddingRight).toBe("12px");
 });
 
 test("PopupShellPresenter runs the primary action only after readonly revalidation succeeds", () => {

@@ -12,9 +12,7 @@ export type InteractionSessionValidationResult =
   | { readonly kind: "stale" };
 
 export interface InteractionSessionValidator {
-  validate(
-    input: InteractionSessionValidationInput,
-  ): InteractionSessionValidationResult;
+  validate(input: InteractionSessionValidationInput): InteractionSessionValidationResult;
 }
 
 export function createInteractionSessionValidator({
@@ -25,8 +23,7 @@ export function createInteractionSessionValidator({
   return {
     validate(input) {
       const statesMatch =
-        input.expectedDailyState.activeProblemId ===
-          input.actualDailyState.activeProblemId &&
+        input.expectedDailyState.activeProblemId === input.actualDailyState.activeProblemId &&
         input.expectedDailyState.status === input.actualDailyState.status &&
         input.expectedDailyState.lastDailyEvaluatedOn ===
           input.actualDailyState.lastDailyEvaluatedOn;
@@ -35,12 +32,7 @@ export function createInteractionSessionValidator({
         return { kind: "stale" };
       }
 
-      if (
-        !localDateMath.isSameDay(
-          input.actualDailyState.lastDailyEvaluatedOn,
-          input.today,
-        )
-      ) {
+      if (!localDateMath.isSameDay(input.actualDailyState.lastDailyEvaluatedOn, input.today)) {
         return { kind: "stale" };
       }
 

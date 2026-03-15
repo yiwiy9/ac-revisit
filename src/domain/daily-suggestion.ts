@@ -1,10 +1,6 @@
 import type { LocalDateMath } from "../shared/date.ts";
 import type { CandidateSelectionService } from "./candidate-selection";
-import type {
-  LocalDateKey,
-  Result,
-  ReviewWorkspace,
-} from "../shared/types.ts";
+import type { LocalDateKey, Result, ReviewWorkspace } from "../shared/types.ts";
 
 export interface DailySuggestionStore {
   readWorkspace(): Result<ReviewWorkspace, DailyEntryError>;
@@ -47,7 +43,9 @@ export function createDailySuggestionService({
         return latestWorkspace;
       }
 
-      if (localDateMath.isSameDay(latestWorkspace.value.dailyState.lastDailyEvaluatedOn, input.today)) {
+      if (
+        localDateMath.isSameDay(latestWorkspace.value.dailyState.lastDailyEvaluatedOn, input.today)
+      ) {
         return success(latestWorkspace.value, false);
       }
 
@@ -80,7 +78,10 @@ export function createDailySuggestionService({
         persistedWorkspace.value,
         input.trigger === "bootstrap" &&
           persistedWorkspace.value.dailyState.status === "incomplete" &&
-          localDateMath.isSameDay(persistedWorkspace.value.dailyState.lastDailyEvaluatedOn, input.today),
+          localDateMath.isSameDay(
+            persistedWorkspace.value.dailyState.lastDailyEvaluatedOn,
+            input.today,
+          ),
       );
     },
   };
