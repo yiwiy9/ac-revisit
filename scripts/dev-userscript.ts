@@ -79,6 +79,7 @@ async function rebuild(reason: string): Promise<void> {
       const devVersion = createDevVersion();
       await buildUserscript({
         outputPath,
+        releaseChannel: "development",
         userscriptName: "ac-revisit (dev)",
         userscriptVersion: devVersion,
         extraMetadata: [

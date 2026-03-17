@@ -65,6 +65,53 @@ describe("bootstrapUserscript", () => {
     );
   });
 
+  test("does not evaluate suggestions or auto-open a popup for anonymous sessions", () => {
+    const storageDouble = createMemoryStorageDouble();
+    const popupCalls: PopupRequest[] = [];
+
+    seedWorkspace(storageDouble.storage, {
+      reviewItems: [
+        {
+          problemId: "abc100/abc100_a",
+          problemTitle: "A - Happy Birthday!",
+          registeredOn: "2026-02-16",
+        },
+      ],
+      dailyState: {
+        activeProblemId: null,
+        status: "complete",
+        lastDailyEvaluatedOn: null,
+      },
+    });
+    setDocument(anonymousHeaderHtml(), CONTEST_PAGE_PATH);
+
+    const result = bootstrapUserscript({
+      reviewStorage: storageDouble.storage,
+      getToday: () => "2026-03-02",
+      openPopup(input) {
+        popupCalls.push(input);
+      },
+    });
+    const reviewStore = createReviewStoreAdapter(storageDouble.storage);
+    const workspaceResult = reviewStore.readWorkspace();
+
+    expect(result).toEqual({
+      session: "anonymous",
+      menuEntryMounted: false,
+      toggleMounted: false,
+    });
+    expect(workspaceResult.ok).toBe(true);
+    if (!workspaceResult.ok) {
+      throw new Error("expected workspace read to succeed");
+    }
+    expect(workspaceResult.value.dailyState).toEqual({
+      activeProblemId: null,
+      status: "complete",
+      lastDailyEvaluatedOn: null,
+    });
+    expect(popupCalls).toEqual([]);
+  });
+
   test("keeps third-party menu entries and does not inherit large class on top-page header", () => {
     const storageDouble = createMemoryStorageDouble();
     setDocument(

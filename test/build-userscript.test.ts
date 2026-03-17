@@ -46,6 +46,8 @@ test("buildUserscript emits a single userscript bundle with required metadata", 
     expect(output).toMatch(/\(\(\) => \{/);
     expect(output).toMatch(/ac-revisit 操作/);
     expect(output).not.toMatch(/@require/);
+    expect(output).not.toMatch(/console\.debug/);
+    expect(output).not.toMatch(/ac-revisit:anchor_missing/);
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
@@ -102,6 +104,38 @@ test("buildUserscript fails when package name drifts from the published userscri
   }
 });
 
+test("buildUserscript fails when published metadata name drifts from package.json", async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), "ac-revisit-build-"));
+
+  try {
+    await expect(
+      buildUserscript({
+        packageJsonPath: new URL("../package.json", import.meta.url),
+        outputPath: pathToFileURL(path.join(tempDir, "ac-revisit.user.js")),
+        userscriptName: "ac-revisit (dev)",
+      }),
+    ).rejects.toThrow(/Published metadata must use package\.json name: ac-revisit/);
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("buildUserscript fails when published metadata version drifts from package.json", async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), "ac-revisit-build-"));
+
+  try {
+    await expect(
+      buildUserscript({
+        packageJsonPath: new URL("../package.json", import.meta.url),
+        outputPath: pathToFileURL(path.join(tempDir, "ac-revisit.user.js")),
+        userscriptVersion: "9.9.9",
+      }),
+    ).rejects.toThrow(/Published metadata must use package\.json version: 0\.0\.0/);
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
 test("buildUserscript can emit development metadata for local Tampermonkey updates", async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), "ac-revisit-build-"));
 
@@ -111,6 +145,7 @@ test("buildUserscript can emit development metadata for local Tampermonkey updat
     await buildUserscript({
       packageJsonPath: new URL("../package.json", import.meta.url),
       outputPath: pathToFileURL(outputPath),
+      releaseChannel: "development",
       userscriptName: "ac-revisit (dev)",
       userscriptVersion: "0.0.0.1700000000",
       extraMetadata: [
@@ -135,6 +170,7 @@ test("buildUserscript can emit development metadata for local Tampermonkey updat
     expect(output).toMatch(
       /^\/\/ @updateURL\s+http:\/\/127\.0\.0\.1:4310\/ac-revisit\.dev\.user\.js$/m,
     );
+    expect(output).toMatch(/debug\(`ac-revisit:\$\{event\.code\}`/);
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }

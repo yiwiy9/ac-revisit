@@ -22,6 +22,7 @@ interface BuildUserscriptOptions {
   packageJsonPath?: string | URL;
   outputPath?: string | URL;
   entryPointPath?: string | URL;
+  releaseChannel?: "published" | "development";
   userscriptName?: string;
   userscriptVersion?: string;
   extraMetadata?: readonly UserscriptMetadataEntry[];
@@ -66,6 +67,7 @@ export async function buildUserscript({
   packageJsonPath = new URL("../package.json", import.meta.url),
   outputPath = new URL("../dist/ac-revisit.user.js", import.meta.url),
   entryPointPath = new URL("../src/main.ts", import.meta.url),
+  releaseChannel = "published",
   userscriptName,
   userscriptVersion,
   extraMetadata = [],
@@ -98,10 +100,21 @@ export async function buildUserscript({
     throw new Error(`Published userscript name must remain ${PUBLISHED_USERSCRIPT_NAME}`);
   }
 
+  if (releaseChannel === "published" && resolvedUserscriptName !== packageName) {
+    throw new Error(`Published metadata must use package.json name: ${packageName}`);
+  }
+
+  if (releaseChannel === "published" && resolvedUserscriptVersion !== packageVersion) {
+    throw new Error(`Published metadata must use package.json version: ${packageVersion}`);
+  }
+
   const bundleResult = await bundle({
     entryPoints: [resolvedEntryPointPath],
     bundle: true,
     charset: "utf8",
+    define: {
+      __AC_REVISIT_DEV__: JSON.stringify(releaseChannel === "development"),
+    },
     format: "iife",
     legalComments: "none",
     platform: "browser",
