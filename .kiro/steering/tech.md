@@ -1,5 +1,8 @@
 # Technology Stack
 
+> updated_at: 2026-03-17
+> update_reason: ローカル開発用 userscript 配信フローと scripts/toolchain 境界を実装に合わせて追記
+
 ## Architecture
 
 このプロジェクトは、単一 userscript を出力する TypeScript 実装であり、`bootstrap` を起点に `runtime`、`domain`、`persistence`、`presentation`、`shared` を薄く分離するレイヤード構成を採る。UI はフレームワークを使わず、ブラウザ DOM を直接操作する。
@@ -9,6 +12,7 @@
 - **Language**: TypeScript
 - **Runtime**: Browser (Tampermonkey), build/test time は Node.js
 - **Packaging**: esbuild で単一 `.user.js` を生成
+- **Local Dev Delivery**: `tsx` + Node.js 標準 `http/fs` を使い、ローカル配信用 `.dev.user.js` を再ビルドしながら配信する
 
 ## Key Libraries
 
@@ -41,6 +45,8 @@
 - `husky` により `pre-commit` で `npm run lint-staged`、`pre-push` で `npm run prepush:guard` を実行する。
 - `prepush:guard` は `npm run verify` を呼び出し、lint・typecheck・test を push 前の標準品質ゲートとして扱う。
 - `.prettierignore` には配布物、依存ディレクトリ、エージェント管理ディレクトリ、spec/steering 以外の機械管理領域を含め、不要な整形対象を広げない。
+- 開発時の標準入口は `npm run dev` とし、ローカル HTTP 配信される dev userscript を Tampermonkey へ登録して確認する。
+- dev 配信物の `downloadURL` / `updateURL` はローカルサーバーを向き、`@version` は再ビルドごとに更新される一時値を使う。
 
 ### Testing
 
@@ -58,6 +64,7 @@
 ### Common Commands
 
 ```bash
+# Dev: npm run dev
 # Build: npm run build
 # Verify: npm run verify
 # Test: npm test
@@ -70,6 +77,7 @@
 - ストレージはブラウザ内の GM storage を唯一の永続化先とし、外部通信は追加しない。
 - 日付判定はローカル暦日の `YYYY-MM-DD` キーへ正規化してから比較する。
 - UI 更新前の整合確認を入れ、stale 状態では操作を続行せず再描画へ戻す。
+- build 用 script と dev 用 script は分離し、公開用 metadata とローカル検証用 metadata を混在させない。
 
 ---
 _依存関係の一覧ではなく、実装判断に影響する技術基準だけを保持する_

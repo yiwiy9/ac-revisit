@@ -1,5 +1,8 @@
 # Project Structure
 
+> updated_at: 2026-03-17
+> update_reason: dev/build scripts と test support 配置の実装パターンを反映
+
 ## Organization Philosophy
 
 全体は「起動」「ページ統合」「ドメイン規則」「保存」「表示」「共有基盤」を分離したレイヤード構成とする。新しいコードは、責務がどの層に属するかを先に決めてから追加する。
@@ -41,6 +44,11 @@
 **Purpose**: 配布物生成と、純粋ロジック + DOM 挙動の検証。  
 **Example**: build script と metadata の契約もテストで固定する。
 
+### Test Support
+**Location**: `/test/support/`  
+**Purpose**: DOM fixture、storage double、workspace fixture のような再利用前提の補助物を集約する。  
+**Example**: jsdom 用の AtCoder 断面 HTML や workspace store double を各テストから共有する。
+
 ## Naming Conventions
 
 - **Files**: 小文字ケバブケースを基本とし、1 ファイル 1 主要責務を保つ。
@@ -66,6 +74,8 @@ import { createReviewStoreAdapter } from "../persistence/review-store";
 - DOM 解決不能、保存失敗、状態不整合は、ユーザー通知を増やす前に静かに停止または再描画する方向を優先する。
 - 永続化されるデータは最小限を維持し、派生状態や補助フラグを安易に追加しない。
 - テストは「純粋ロジックの固定」と「起動導線の回帰防止」を分けて配置する。
+- `scripts/` は公開 build とローカル dev 配信を分離し、どちらも `src/main.ts` を単一 entry point として扱う。
+- `test/` 直下には挙動単位の spec を置き、共通セットアップを各テストへコピーしない。
 
 ---
 _新しいファイルはこの責務分割と命名に従う限り、構成ルールの更新を必要としない_
