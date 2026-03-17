@@ -71,16 +71,17 @@
 | 6.4 | 「完了」状態の表示と有効条件 | PopupViewModelFactory | State Contract | Popup actions |
 | 6.5 | 「完了」操作の単一トランザクション | ReviewMutationService, ReviewStoreAdapter | Service Interface | Popup actions |
 | 6.6 | 「もう一問」状態の表示と有効条件 | PopupViewModelFactory | State Contract | Popup actions |
-| 6.7 | 候補なし時の「もう一問」無効化 | PopupViewModelFactory | State Contract | Popup actions |
-| 6.8 | 「もう一問」で再抽選し未完了へ | ReviewMutationService, CandidateSelectionService | Service Interface | Popup actions |
-| 6.9 | 未完了の差し替え禁止 | ReviewMutationService | Service Interface | Popup actions |
-| 6.10 | ポップアップ内の明示操作前に整合確認 | InteractionSessionValidator, PopupPresenter | Service Interface, State Contract | Popup actions |
-| 6.11 | 整合確認失敗時は無言で最新状態へ再描画 | InteractionSessionValidator, PopupPresenter | Service Interface | Popup actions |
-| 6.12 | header/body/footer の 3 領域レイアウト | PopupPresenter | DOM Contract, Presentation Contract | Popup actions |
-| 6.13 | 中立配色と標準ボタン表現 | PopupPresenter | Presentation Contract | Popup actions |
-| 6.14 | 狭い viewport に収まる幅制約 | PopupPresenter | Presentation Contract | Popup actions |
-| 6.15 | header close と footer 閉じるの両方を提供 | PopupPresenter | DOM Contract, Presentation Contract | Popup actions |
-| 6.16 | 主要アクションを footer 内で分離配置 | PopupPresenter | DOM Contract, Presentation Contract | Popup actions |
+| 6.7 | 完了済みかつ候補なし時の「もう一問」無効化 | PopupViewModelFactory | State Contract | Popup actions |
+| 6.8 | 今日の一問なし・候補なし時の「完了」無効化 | PopupViewModelFactory | State Contract | Popup actions |
+| 6.9 | 「もう一問」で再抽選し未完了へ | ReviewMutationService, CandidateSelectionService | Service Interface | Popup actions |
+| 6.10 | 未完了の差し替え禁止 | ReviewMutationService | Service Interface | Popup actions |
+| 6.11 | ポップアップ内の明示操作前に整合確認 | InteractionSessionValidator, PopupPresenter | Service Interface, State Contract | Popup actions |
+| 6.12 | 整合確認失敗時は無言で最新状態へ再描画 | InteractionSessionValidator, PopupPresenter | Service Interface | Popup actions |
+| 6.13 | header/body/footer の 3 領域レイアウト | PopupPresenter | DOM Contract, Presentation Contract | Popup actions |
+| 6.14 | 中立配色と標準ボタン表現 | PopupPresenter | Presentation Contract | Popup actions |
+| 6.15 | 狭い viewport に収まる幅制約 | PopupPresenter | Presentation Contract | Popup actions |
+| 6.16 | header close と footer 閉じるの両方を提供 | PopupPresenter | DOM Contract, Presentation Contract | Popup actions |
+| 6.17 | 主要アクションを footer 内で分離配置 | PopupPresenter | DOM Contract, Presentation Contract | Popup actions |
 | 7.1 | 自動 AC 検知なし | UserscriptBootstrap | Service Interface | Scope guard |
 | 7.2 | 一覧画面なし | MenuEntryAdapter, PopupPresenter | Service Interface | Scope guard |
 | 7.3 | デュー可視化なし | PopupViewModelFactory | State Contract | Scope guard |
@@ -223,14 +224,14 @@ flowchart TD
 | MenuEntryAdapter | UI integration | ログイン時ユーザーメニューに常設リンクを追加する | 2.3, 5.1, 5.2, 5.3 | AtCoderPageAdapter P0, PopupPresenter P0 | Service |
 | DailySuggestionService | Application | 当日提案の確定と 1 日 1 回通知判定を管理する | 4.3, 4.4, 4.5, 4.6, 4.7, 5.3, 5.4, 5.5 | ReviewStoreAdapter P0, CandidateSelectionService P0, LocalDateMath P0 | Service, State |
 | CandidateSelectionService | Domain | 14 日経過候補の抽出とランダム選定を行う | 4.1, 4.2, 7.8 | LocalDateMath P0 | Service |
-| ReviewMutationService | Domain | 登録、解除、完了、もう一問の状態遷移を行う | 3.3, 3.4, 3.5, 6.5, 6.8, 6.9, 6.10, 7.9, 7.10 | ReviewStoreAdapter P0, CandidateSelectionService P0, InteractionSessionValidator P0 | Service |
-| InteractionSessionValidator | Domain | ポップアップ内の操作前整合判定を一元化する | 6.10, 6.11, 7.14 | LocalDateMath P0 | Service |
+| ReviewMutationService | Domain | 登録、解除、完了、もう一問の状態遷移を行う | 3.3, 3.4, 3.5, 6.5, 6.9, 6.10, 6.11, 7.9, 7.10 | ReviewStoreAdapter P0, CandidateSelectionService P0, InteractionSessionValidator P0 | Service |
+| InteractionSessionValidator | Domain | ポップアップ内の操作前整合判定を一元化する | 6.11, 6.12, 7.14 | LocalDateMath P0 | Service |
 | ReviewStoreAdapter | Persistence | review workspace を単一スナップショットで保存する | 2.4, 2.6, 2.7, 4.7, 7.4, 7.5 | Tampermonkey storage P0 | Service, State |
 | LocalDateProvider | Shared | ブラウザローカル時刻から canonical な `LocalDateKey` を生成する | 4.3, 4.4, 4.5, 6.5, 6.9 | none | Service |
 | LocalDateMath | Shared | `LocalDateKey` の比較と暦日差分を canonical に扱う | 4.1, 4.2, 4.4, 4.5 | none | Service |
 | PopupViewModelFactory | Presentation | ボタン有効状態と表示文言を決定する | 4.6, 6.1, 6.2, 6.3, 6.4, 6.6, 6.7, 7.3, 7.7 | none | Service, State |
 | PopupStateLoader | Presentation | ポップアップ描画入力の構築を担う | 5.3, 5.4, 6.1, 6.2, 6.3, 6.4, 6.6, 6.7 | ReviewStoreAdapter P0, CandidateSelectionService P1, PopupViewModelFactory P0 | Service |
-| PopupPresenter | Presentation | 共通ポップアップ UI の描画とイベント委譲を担う | 5.3, 5.4, 6.1, 6.2, 6.3, 6.4, 6.5, 6.8, 6.10, 6.11, 7.10, 7.14 | DailySuggestionService P0, PopupStateLoader P0, InteractionSessionValidator P0, ReviewMutationService P0, LocalDateProvider P0 | Service |
+| PopupPresenter | Presentation | 共通ポップアップ UI の描画とイベント委譲を担う | 5.3, 5.4, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.9, 6.11, 6.12, 6.13, 6.14, 6.15, 6.16, 6.17, 7.10, 7.14 | DailySuggestionService P0, PopupStateLoader P0, InteractionSessionValidator P0, ReviewMutationService P0, LocalDateProvider P0 | Service |
 
 ### Packaging
 
@@ -656,7 +657,7 @@ type ProblemContextResult =
 | Field | Detail |
 |-------|--------|
 | Intent | 復習対象と今日の一問の状態遷移を定義する |
-| Requirements | 3.3, 3.4, 3.5, 6.5, 6.8, 6.9, 6.10, 7.9, 7.10, 7.16 |
+| Requirements | 3.3, 3.4, 3.5, 6.5, 6.9, 6.10, 6.11, 7.9, 7.10, 7.16 |
 
 **Responsibilities & Constraints**
 - 新規登録時は当日を登録日として作成する
@@ -857,7 +858,7 @@ type DailyEntryError = { readonly kind: "storage_unavailable" };
 - Integration: `ensureTodaySuggestion()` は、当日提案の確定に使用した最新の `ReviewWorkspace` 全体を返し、直後の表示経路が追加のストア再読取に依存しないようにする。
 - Integration: `ensureTodaySuggestion({ today, trigger: "bootstrap" })` は bootstrap の自動起動専用とし、その暦日の最初の提案処理で候補ありなら `shouldAutoOpenPopup = true` を返す。候補 0 件、同日内の 2 回目以降、または `trigger: "menu"` では `shouldAutoOpenPopup = false` を返す。
 - Integration: `ensureTodaySuggestion({ today, trigger: "menu" })` は menu / refresh 経路専用とし、同日内の再呼び出しでは no-op 成功として扱い、その場合もその時点の `ReviewWorkspace` を返す。
-- Integration: due 候補 0 件で当日初回の提案処理を消費する場合は、前日提案の引き継ぎではなく stale 状態の明示的な破棄として `activeProblemId = null` と `status = "complete"` を保存する。
+- Integration: due 候補 0 件で当日初回の提案処理を消費する場合は、前日提案の引き継ぎではなく stale 状態の明示的な破棄として `activeProblemId = null` と `status = "complete"` を保存する。MVP ではこの `complete` 状態を、当日完了済みと「今日の一問なし・候補なし」の双方の非活性表示に用いる。
 - Integration: `PopupPresenter`、`PopupStateLoader`、`InteractionSessionValidator` は日跨ぎを検知しても状態を直接書き換えず、必要な再収束は `refresh({ source, today })` から `ensureTodaySuggestion({ today, trigger: "menu" })` を呼ぶ経路へ委譲する。
 - Integration: 保存失敗はすべて `storage_unavailable` として扱い、再試行は行わない。
 - Validation: 同一暦日に 2 回目以降は `shouldAutoOpenPopup` が `false` になる。
@@ -868,13 +869,13 @@ type DailyEntryError = { readonly kind: "storage_unavailable" };
 | Field | Detail |
 |-------|--------|
 | Intent | ポップアップ内の明示操作前に stale 判定基準を一箇所へ固定する |
-| Requirements | 6.10, 6.11, 7.14 |
+| Requirements | 6.11, 6.12, 7.14 |
 
 **Responsibilities & Constraints**
 - `expectedDailyState` と最新 `dailyState` の完全一致を判定する
 - 最新 `dailyState.lastDailyEvaluatedOn` が入力 `today` と同日かを判定する
 - 判定結果を `valid` または `stale` に正規化する
-- Requirement 6.10 の「表示中の今日の一問状態と最新保存状態の整合確認」は、MVP ではトランザクション安全性に直結する `dailyState` の一致と当日性確認として解釈し、`hasDueCandidates` などの派生表示状態の完全一致までは責務に含めない
+- Requirement 6.11 の「表示中の今日の一問状態と最新保存状態の整合確認」は、MVP ではトランザクション安全性に直結する `dailyState` の一致と当日性確認として解釈し、`hasDueCandidates` などの派生表示状態の完全一致までは責務に含めない
 - 日跨ぎを検知しても `dailyState` の正規化や当日提案の確定は行わず、判定結果だけを返す
 - DOM 読み取り、ストレージ読み書き、`refresh()`、画面遷移を行わない
 
@@ -1127,7 +1128,7 @@ type ToggleMountError =
 | Field | Detail |
 |-------|--------|
 | Intent | ポップアップ表示状態を純粋データへ変換する |
-| Requirements | 4.6, 6.1, 6.2, 6.3, 6.4, 6.6, 6.7, 7.3, 7.7 |
+| Requirements | 4.6, 6.1, 6.2, 6.3, 6.4, 6.6, 6.7, 6.8, 7.3, 7.7 |
 
 **Responsibilities & Constraints**
 - 「今日の一問」セクションのタイトルリンクと、単一アクションボタンの状態・文言を一元判定する
@@ -1176,8 +1177,9 @@ interface ActionState {
 - Integration: `PopupViewModelFactory` はストアを直接読まない純粋関数とし、`reviewItems`、`dailyState`、`hasDueCandidates` のみを入力に受け取る。
 - Integration: `todayLinkLabel` は、`dailyState.activeProblemId` に対応する `ReviewItem.problemTitle` があればそれを使い、見つからない場合は `問題未選択` を返す。
 - Integration: `todayLink` の有効条件は `dailyState.status === "incomplete"` かつ `dailyState.activeProblemId !== null` のときに限る。それ以外は必ず `enabled = false` かつ `presentation = "grayed"` を返す。
-- Integration: `primaryActionKind` と `primaryActionLabel` は、`dailyState.status === "incomplete"` かつ `dailyState.activeProblemId !== null` のとき `complete` / `完了`、それ以外は `fetch_next` / `もう一問` を返す。
-- Integration: `primaryAction` は、`primaryActionKind === "complete"` のとき押下可能、`primaryActionKind === "fetch_next"` のときは `hasDueCandidates === true` の場合にのみ押下可能とし、押下不可時は `presentation = "grayed"` を返す。
+- Integration: `primaryActionKind` と `primaryActionLabel` は、`dailyState.status === "incomplete"` かつ `dailyState.activeProblemId !== null` のとき `complete` / `完了` を返す。`dailyState.status === "complete"` のときは、`hasDueCandidates === true` なら `fetch_next` / `もう一問` を返し、`hasDueCandidates === false` なら `complete` / `完了` を返す。
+- Integration: `primaryAction` は、`dailyState.status === "incomplete"` かつ `dailyState.activeProblemId !== null` のとき押下可能、`dailyState.status === "complete"` かつ `hasDueCandidates === true` のとき押下可能、それ以外は押下不可とする。押下不可時は `presentation = "grayed"` を返す。
+- Integration: MVP では `dailyState.status === "complete"` かつ `activeProblemId === null` が、当日完了済みと「今日の一問なし・候補なし」の双方を表しうる。このため `hasDueCandidates` の有無に応じて、同じ保存状態から `もう一問` disabled または `完了` disabled の表示を切り替える。
 - Integration: `PopupViewModelFactory` は MVP でも維持する。理由は、要件 6 のボタン有効条件を DOM 描画から分離し、純粋関数として単体テスト可能にするためである。
 - Validation: 無効状態で必ず `grayed` を返す。
 - Risks: 条件式を複数箇所に持つと仕様逸脱が起きる。
@@ -1252,7 +1254,7 @@ type PopupStateLoadError = { readonly kind: "storage_unavailable" };
 | Field | Detail |
 |-------|--------|
 | Intent | 常設リンク押下と自動通知で同一ポップアップ UI を描画し、操作を委譲する |
-| Requirements | 2.10, 5.3, 5.4, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.8, 6.10, 6.11, 6.12, 6.13, 6.14, 6.15, 6.16, 7.10, 7.14 |
+| Requirements | 2.10, 5.3, 5.4, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.9, 6.11, 6.12, 6.13, 6.14, 6.15, 6.16, 6.17, 7.10, 7.14 |
 
 **Responsibilities & Constraints**
 - 単一のポップアップテンプレートを用いる
@@ -1383,11 +1385,12 @@ type PopupError =
 - Value Object: `DailySuggestionState`
   - 当日の提案問題と完了状態を保持
   - 不変条件: `activeProblemId` は 0 件または 1 件、`status` は `incomplete` `complete` のみ
-  - 状態定義: `complete` は「当日の未完了提案が存在しない」ことだけを表す
+  - 状態定義: `incomplete` は「その暦日の提案問題があり未完了」であること、`complete` は「当日の未完了提案が存在しない」ことを表す
 - Domain rule:
   - 完了は「削除して当日で再登録」
   - 問題ごとの完了フラグは禁止
   - 単一アクションボタンは、`status` と `hasDueCandidates` に応じて `完了` / `もう一問` のどちらか一方の状態だけを取る
+  - MVP では `complete` を、当日完了済みと「今日の一問なし・候補なし」の双方の非活性状態に用いる
   - `unregisterProblem` は、同日中の提案中解除のときだけ Requirement 3.5 の完了遷移として扱い、日跨ぎ stale な `activeProblemId` を削除する場合は dangling 参照の解消のみを行い `lastDailyEvaluatedOn` は変更しない
   - ポップアップ起点の明示操作は、`InteractionSessionValidator` により `expectedDailyState` と最新 `dailyState` の完全一致および最新 `lastDailyEvaluatedOn` の当日性を確認してから継続する
 
@@ -1442,7 +1445,7 @@ classDiagram
 - 提出詳細ページの `ProblemId` は `AtCoderPageAdapter.readProblemContextSource()` が返す `taskHref` から導出する
 - 提出詳細ページの `ProblemTitle` は `AtCoderPageAdapter.readProblemContextSource()` が返す `taskTitleText` から導出する
 - `status === "incomplete"` のとき、`dailyState.activeProblemId` は `reviewItems` に存在しなければならない。完了処理、同日中の提案中解除、または日跨ぎ stale な提案参照の解消後は同一更新内で `null` へ遷移する
-- `status === "complete"` かつ `activeProblemId === null` は、当日未提案・候補 0 件・当日完了済み・当日解除済み・日跨ぎ stale 参照解消済みのいずれかを表す
+- `status === "complete"` かつ `activeProblemId === null` は、当日完了済み・候補 0 件の当日未提案・当日解除済み・日跨ぎ stale 参照解消済みのいずれかを表す
 - `status === "complete"` のとき `activeProblemId` は常に `null` とする
 - `status === "incomplete"` のとき `activeProblemId` は常に非 `null` とする
 - `ReviewStoreAdapter` は読み込み時に `reviewItems` の `problemId` 一意性、`ProblemId` 形式、`ProblemTitle` の受理条件、`LocalDateKey` の受理条件を検証し、違反時は保存形式不一致として扱う
@@ -1453,8 +1456,8 @@ classDiagram
 - `PopupPresenter.open({ source: "menu", today })` / `refresh({ source, today })` は表示前に `DailySuggestionService.ensureTodaySuggestion({ today, trigger: "menu" })` を実行し、その返却 `reviewWorkspace` を `PopupStateLoader.load({ mode: "workspace", today, reviewWorkspace })` へ渡す。`PopupPresenter.open({ source: "auto", today, prefetchedReviewWorkspace })` は bootstrap が消費した日次判定と取得済みスナップショットを再利用するため、`PopupStateLoader.load({ mode: "workspace", today, reviewWorkspace: prefetchedReviewWorkspace })` を使う。`refresh({ source: "auto", today })` でも当日提案の再確定は同じ経路を使うが、再描画後の表示 source は維持する。問題タイトルリンクと更新系操作の直前整合確認は、状態を書き換えないため `PopupStateLoader.load({ mode: "readonly", today })` で最新状態を取得し、保持中の `expectedDailyState` と最新 `dailyState` を `InteractionSessionValidator.validate(...)` へ渡す。ポップアップ内 mutation 成功後は `MutationOutcome.reviewWorkspace` を `PopupStateLoader.load({ mode: "workspace", today, reviewWorkspace: mutationOutcome.reviewWorkspace })` へ渡し、追加のストア再読取なしで再描画する
 - `ReviewMutationService.unregisterProblem()` は、入力 `problemId` が最新 `activeProblemId` と一致し、かつ `lastDailyEvaluatedOn` が入力 `today` と同日な場合だけ Requirement 3.5 の「今日の一問完了」遷移として扱う。日跨ぎ stale 状態で一致した場合は、`lastDailyEvaluatedOn` を変更せずに `activeProblemId = null`、`status = "complete"` へ正規化して dangling 参照を残さない
 - `ReviewMutationService.completeTodayProblem()` と `fetchNextTodayProblem()` は、入力 `expectedDailyState` と最新保存状態の `dailyState` に対して `InteractionSessionValidator.validate(...)` を実行し、`valid` の場合にのみ更新を適用する。`stale` の場合は `stale_session` を返して保存しない
-- `primaryActionKind === "fetch_next"` かつ `primaryAction` が有効になりうるのは `status === "complete"` かつ `activeProblemId === null` かつ `hasDueCandidates === true` のときだけであり、到達可能状態は当日完了済みまたは提案中解除済みに限定する
-- `primaryActionKind === "complete"` かつ `primaryAction` が有効になりうるのは `status === "incomplete"` かつ `activeProblemId !== null` のときだけであり、それ以外は `primaryActionKind === "fetch_next"` として扱う
+- `primaryActionKind === "fetch_next"` かつ `primaryAction` が有効になりうるのは `status === "complete"` かつ `activeProblemId === null` かつ `hasDueCandidates === true` のときだけである
+- `primaryActionKind === "complete"` かつ `primaryAction` が有効になりうるのは `status === "incomplete"` かつ `activeProblemId !== null` のときだけであり、`status === "complete"` かつ `hasDueCandidates === false` のときは `完了` disabled を返す
 - `todayLinkLabel` は `activeProblemId` に対応する `ReviewItem.problemTitle` を優先し、未解決時は `問題未選択` を使う
 - `todayLink` の実際の遷移直前には `PopupPresenter` が `PopupStateLoader.load({ mode: "readonly", today })` で最新状態を取得し、`InteractionSessionValidator` による共通の事前整合チェックを行う。`stale` の場合は遷移せず `refresh({ source, today })` により当日提案確定後の状態へ再描画し、`valid` の場合に限り最新 `activeProblemId` から再構築した URL へ遷移する
 - 単一トランザクション対象:
@@ -1560,7 +1563,8 @@ classDiagram
 - `CandidateSelectionService` が 14 日未満を除外し、14 日以上のみ抽出する
 - `CandidateSelectionService` が due 候補 0 件で `no_due_candidates` を返す
 - `PopupViewModelFactory` が問題タイトルリンクと単一アクションボタンの状態を仕様どおりに返す
-- `PopupViewModelFactory` が `status === "complete"` かつ `hasDueCandidates === false` のとき `primaryActionKind = "fetch_next"` かつ `primaryAction` を無効化する
+- `PopupViewModelFactory` が `status === "complete"` かつ `hasDueCandidates === false` かつ `activeProblemId !== null` のとき `primaryActionKind = "fetch_next"` かつ `primaryAction` を無効化する
+- `PopupViewModelFactory` が `status === "complete"` かつ `hasDueCandidates === false` かつ `activeProblemId === null` のとき `primaryActionKind = "complete"` かつ `primaryAction` を無効化する
 - `ReviewMutationService.fetchNextTodayProblem()` が未完了状態を拒否する
 - `ReviewMutationService` が完了時に削除後再登録スナップショットを返す
 - `ReviewMutationService` が `expectedDailyState` 不一致時に `stale_session` を返し、保存しない
@@ -1579,6 +1583,7 @@ classDiagram
 - `ReviewStoreAdapter` が保存形式不一致時に部分復旧せず canonical empty state を返す
 - `ReviewStoreAdapter` が `status` と `activeProblemId` の不変条件違反を保存形式不一致として扱う
 - `ReviewStoreAdapter` が `status === "incomplete"` かつ `activeProblemId` が `reviewItems` に存在しない孤立状態を保存形式不一致として扱う
+- `ReviewStoreAdapter` が `status === "complete"` にもかかわらず `activeProblemId` が非 `null` の状態を保存形式不一致として扱う
 - `ReviewStoreAdapter` が `problemId` 重複を保存形式不一致として扱う
 - `ReviewStoreAdapter` が `problemTitle` の空文字または空白のみを保存形式不一致として扱う
 - `ReviewStoreAdapter` が保存前に `reviewItems` を `problemId` 昇順へ正規化する
