@@ -160,6 +160,21 @@
   - userscript 固有のスタイルは必要最小限にとどめ、AtCoder 既存 Bootstrap クラスと大きく競合しない補助的な文字サイズ・余白指定だけを許容する。
   - `ToggleMountCoordinator` は問題ごとの文脈に密着した既存ボタン列や問題リンク行へ差し込み、提出番号見出しのような離れた位置へは出さない。
 
+### AtCoder old layout modal scroll-lock behavior
+- **Context**: 旧レイアウトの問題ページ・提出詳細ページで、userscript のモーダル表示中に背景スクロールが止まらない事象の原因を切り分ける必要があった。
+- **Sources Consulted**:
+  - ユーザー提供の旧レイアウト / 新レイアウト DOM 断面
+  - ブラウザ Console での `document.scrollingElement`、`overflow`、AtCoder 純正モーダル挙動の確認結果
+- **Findings**:
+  - 旧レイアウトの競技ページでは `document.scrollingElement` が `HTML` になり、実スクロール主体が `body` ではなく `html` である。
+  - 同状態で `body.modal-open` と `body { overflow: hidden; }` は有効でも、`html` 側は `overflow: auto scroll` のままであり、ページ全体のスクロールは継続する。
+  - 旧レイアウトに元から存在する AtCoder 純正モーダル（例: `#modal-contest-start`）を `$('#modal-contest-start').modal('show')` で開いても、背景スクロールは止まらなかった。
+  - 追加の fixed / sticky UI は存在するものの、主要候補に独立した scroll container は見当たらず、本件の主因ではなかった。
+- **Implications**:
+  - 旧レイアウトでの背景スクロール継続は `ac-revisit` 固有の DOM 差し込み不備ではなく、AtCoder 純正モーダルと同系統の制約として扱える。
+  - MVP では AtCoder 既存 modal contract への追従を優先し、旧レイアウト専用の独自 scroll-lock 補完は行わない。
+  - 将来この挙動を変える場合は、「AtCoder 既存挙動との一致」ではなく「userscript 独自補完」を導入する判断として明示的に扱う。
+
 ## Architecture Pattern Evaluation
 
 | Option | Description | Strengths | Risks / Limitations | Notes |

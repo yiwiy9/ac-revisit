@@ -121,6 +121,7 @@
   - `AuthSessionGuard`、`ProblemContextResolver`、`CandidateSelectionService`、`ReviewMutationService`、`ReviewStoreAdapter`、`PopupViewModelFactory` は、要件またはテスト観点に直結するため独立責務として維持する
   - `AtCoderPageAdapter`、`ProblemContextResolver`、`ToggleMountCoordinator` は責務上は分けるが、MVP では同一 `src/runtime` モジュールまたは近接した少数ファイルへ集約してよく、追加の抽象レイヤーは増やさない
   - `PopupPresenter` と `PopupStateLoader` は責務上は分けるが、MVP では同一 `src/presentation` モジュール内の公開 API と内部 helper として実装してよい
+  - 旧レイアウト競技ページにおけるモーダル表示中の背景スクロールは、AtCoder 純正モーダルでも `html` スクロールが継続する制約を持つため、`PopupPresenter` は同じ modal contract に追従し、独自の scroll-lock 補完を必須としない
   - `UserscriptBootstrap` を唯一の起動オーケストレーションとし、これ以上の調停レイヤーは導入しない
 - Composition root: `src/main.ts` 相当の userscript entrypoint がページロードごとに `LocalDateProvider`、`LocalDateMath`、`AtCoderPageAdapter`、`AuthSessionGuard`、`ReviewStoreAdapter`、`CandidateSelectionService`、`InteractionSessionValidator`、`ReviewMutationService`、`PopupPresenter`、`UserscriptBootstrap` の最小集合を 1 回だけ生成し、依存関係を束ねて起動する。`DailySuggestionService`、`MenuEntryAdapter`、`ToggleMountCoordinator` は、責務名としては維持しつつ、MVP 実装では `UserscriptBootstrap` 近接モジュール内の内部 collaborator として束ねてよい。
 - Environment boundary: composition root は `PlatformPorts`（名称は実装時に同等で可）として、`rng: () => number`、userscript storage access、開発時 debug logger をまとめて生成し、各コンポーネントへ必要な形で渡す。`CandidateSelectionService`、`ReviewStoreAdapter`、開発時診断経路はこの入口を通して環境依存へ接続し、ドメイン層や表示ロジックへ `Math.random`、`GM_*`、`console.*` の直参照を分散させない。
