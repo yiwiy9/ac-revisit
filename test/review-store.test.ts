@@ -239,6 +239,10 @@ test("ReviewStoreAdapter preserves the completed problem ID when complete state 
       },
     },
   });
+  expect(result.ok).toBe(true);
+  if (!result.ok) {
+    throw new Error("expected successful workspace write");
+  }
   expect(JSON.parse(double.writes[0].value)).toEqual({
     version: 1,
     payload: result.value,
