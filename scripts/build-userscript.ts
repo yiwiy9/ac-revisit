@@ -26,7 +26,10 @@ interface BuildUserscriptOptions {
   userscriptName?: string;
   userscriptVersion?: string;
   extraMetadata?: readonly UserscriptMetadataEntry[];
+  reviewIntervalDays?: number;
 }
+
+const REVIEW_INTERVAL_DAYS_ENV_NAME = "AC_REVISIT_REVIEW_INTERVAL_DAYS";
 
 function toFilesystemPath(targetPath: string | URL): string {
   if (targetPath instanceof URL) {
@@ -71,6 +74,7 @@ export async function buildUserscript({
   userscriptName,
   userscriptVersion,
   extraMetadata = [],
+  reviewIntervalDays = resolveReviewIntervalDaysFromEnv(),
 }: BuildUserscriptOptions = {}): Promise<{ outputPath: string }> {
   const resolvedPackageJsonPath = toFilesystemPath(packageJsonPath);
   const resolvedOutputPath = toFilesystemPath(outputPath);
@@ -114,6 +118,7 @@ export async function buildUserscript({
     charset: "utf8",
     define: {
       __AC_REVISIT_DEV__: JSON.stringify(releaseChannel === "development"),
+      __AC_REVISIT_REVIEW_INTERVAL_DAYS__: JSON.stringify(reviewIntervalDays),
     },
     format: "iife",
     legalComments: "none",
@@ -139,6 +144,22 @@ export async function buildUserscript({
   return {
     outputPath: resolvedOutputPath,
   };
+}
+
+function resolveReviewIntervalDaysFromEnv(): number {
+  const rawValue = process.env[REVIEW_INTERVAL_DAYS_ENV_NAME];
+
+  if (rawValue === undefined) {
+    return 14;
+  }
+
+  const parsedValue = Number(rawValue);
+
+  if (!Number.isInteger(parsedValue) || parsedValue < 0) {
+    throw new Error(`${REVIEW_INTERVAL_DAYS_ENV_NAME} must be a non-negative integer: ${rawValue}`);
+  }
+
+  return parsedValue;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

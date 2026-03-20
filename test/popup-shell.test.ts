@@ -5,6 +5,7 @@ import {
   createPopupStateLoader,
   type PopupStateSnapshot,
 } from "../src/presentation/popup-shell.ts";
+import { REVIEW_INTERVAL_DAYS } from "../src/shared/date.ts";
 import type { DailySuggestionState, ReviewItem } from "../src/shared/types.ts";
 
 const domWindow = globalThis.window;
@@ -363,7 +364,7 @@ test("PopupShellPresenter disables complete when neither today's suggestion nor 
   expect(todayLink?.getAttribute("aria-disabled")).toBe("true");
   expect(todayLink?.className).toBe("text-muted");
   expect(description?.textContent).toBe(
-    "復習対象がありません。追加した問題は14日後に今日の一問として表示されます。",
+    `復習対象がありません。追加した問題は${REVIEW_INTERVAL_DAYS}日後に今日の一問として表示されます。`,
   );
   expect(actionButton?.textContent).toBe("完了");
   expect(actionButton?.disabled).toBe(true);

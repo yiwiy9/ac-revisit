@@ -15,6 +15,28 @@ test("package.json exposes the canonical build script for the userscript bundle"
   expect(packageJson.scripts.dev).toBe("tsx scripts/dev-userscript.ts");
 });
 
+test("buildUserscript can inject a custom review interval at build time", async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), "ac-revisit-build-"));
+
+  try {
+    const outputPath = path.join(tempDir, "ac-revisit.user.js");
+
+    await buildUserscript({
+      packageJsonPath: new URL("../package.json", import.meta.url),
+      outputPath: pathToFileURL(outputPath),
+      reviewIntervalDays: 0,
+    });
+
+    const output = await readFile(outputPath, "utf8");
+
+    expect(output).toMatch(
+      /var REVIEW_INTERVAL_DAYS = Number\.isInteger\(0\) && 0 >= 0 \? 0 : DEFAULT_REVIEW_INTERVAL_DAYS;/,
+    );
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
 test("buildUserscript emits a single userscript bundle with required metadata", async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), "ac-revisit-build-"));
 

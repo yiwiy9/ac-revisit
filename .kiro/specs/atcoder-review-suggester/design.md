@@ -1,13 +1,13 @@
 # Design Document
 
 ## Overview
-`ac-revisit` は AtCoder 上で動作する Tampermonkey 向けユーザースクリプトとして、復習対象の登録、14 日経過後の候補判定、当日 1 回の「今日の一問」提案を提供する。設計の中心は、AtCoder の DOM への最小限の差し込み、単一スナップショット保存、そして日次ルールを壊さない最小限の状態遷移である。
+`ac-revisit` は AtCoder 上で動作する Tampermonkey 向けユーザースクリプトとして、復習対象の登録、既定では 14 日経過後の候補判定、当日 1 回の「今日の一問」提案を提供する。設計の中心は、AtCoder の DOM への最小限の差し込み、単一スナップショット保存、そして日次ルールを壊さない最小限の状態遷移である。
 
 本機能は、既存の `ac-revisit` userscript 実装を前提として、要件と steering に沿う形で責務分割・状態遷移・品質ゲートを明文化し直すものである。`package.json`、既存の `src/` / `test/` 構成、userscript 向け build 経路は現行資産を基盤として扱い、不足する契約や整理が必要な箇所をこの設計で定義する。
 
 ### Goals
 - AtCoder の問題ページと提出詳細ページで復習対象トグルを提供する
-- 当日最初の提案処理時に 14 日経過済み候補から 1 問だけ提案する
+- 当日最初の提案処理時に既定では 14 日経過済み候補から 1 問だけ提案する
 - 問題データと今日の一問状態を 1 つの保存スナップショットとして扱い、削除と完了を 1 回の保存で更新する
 - Greasy Fork 配布に必要な userscript metadata と品質チェック経路を定義する
 
@@ -49,7 +49,7 @@
 | 3.9 | 提出詳細ページで問題リンク直後 | AtCoderPageAdapter, ToggleMountCoordinator | Service Interface, DOM Contract | Register and mutate |
 | 3.10 | 小型ボタンと状態色 | ToggleMountCoordinator | Presentation Contract | Register and mutate |
 | 4.1 | 14 日経過のみ候補 | CandidateSelectionService | Service Interface | Daily suggestion |
-| 4.2 | 固定 14 日のみ | CandidateSelectionService | Service Interface | Daily suggestion |
+| 4.2 | 既定値 14 日のみ | CandidateSelectionService | Service Interface | Daily suggestion |
 | 4.3 | 当日初回の提案処理でランダム 1 問選定 | DailySuggestionService, UserscriptBootstrap, PopupPresenter | Service Interface, State Contract | Daily suggestion |
 | 4.4 | 初回自動起動時のみ自動表示 | DailySuggestionService, UserscriptBootstrap | State Contract | Daily suggestion |
 | 4.5 | 候補なしなら当日提案なし | DailySuggestionService | Service Interface | Daily suggestion |
@@ -303,7 +303,7 @@ interface LocalDateMath {
 - Invariants: `LocalDateKey` の比較と差分計算ロジックを他層へ複製しない
 
 **Implementation Notes**
-- Integration: `CandidateSelectionService` は `elapsedDays(registeredOn, today) >= 14` を唯一の due 判定として使う。
+- Integration: `CandidateSelectionService` は `elapsedDays(registeredOn, today) >= reviewIntervalDays` を唯一の due 判定として使う。`reviewIntervalDays` の既定値は 14 とし、開発時の build/dev では外部注入を許容する。
 - Integration: `DailySuggestionService` は `isSameDay(lastDailyEvaluatedOn, today)` を唯一の当日評価済み判定として使う。
 - Validation: 月跨ぎ、年跨ぎ、うるう年境界でも期待どおりの整数差を返すことを固定テストで確認する。
 - Risks: 暦日差分計算が各サービスに散ると、同じ保存値でも候補判定と日次判定が食い違う。
@@ -758,8 +758,8 @@ type MutationError =
 | Requirements | 4.1, 4.2, 7.8 |
 
 **Responsibilities & Constraints**
-- `registeredOn` から 14 日以上経過した `ReviewItem` のみ候補とする
-- 固定 14 日以外の間隔ロジックを持たない
+- `registeredOn` から `reviewIntervalDays` 日以上経過した `ReviewItem` のみ候補とする
+- `reviewIntervalDays` の既定値は 14 とし、段階的増加や動的調整のような別種の間隔ロジックは持たない
 - 候補から 1 問のみを抽出する
 
 **Dependencies**
@@ -784,12 +784,12 @@ interface CandidateQuery {
 type CandidateSelectionError = { readonly kind: "no_due_candidates" };
 ```
 - Preconditions: `reviewItems` は重複のない `ProblemId` 集合であること
-- Postconditions: 返却候補は必ず 14 日以上経過済み
+- Postconditions: 返却候補は必ず `reviewIntervalDays` 日以上経過済み
 - Invariants: 候補判定に外部状態を参照しない
 
 **Implementation Notes**
 - Integration: ランダム抽選の責務はこの層に固定する。
-- Integration: due 判定は `LocalDateMath.elapsedDays(registeredOn, today) >= 14` に固定し、文字列比較やミリ秒差分を直接用いない。
+- Integration: due 判定は `LocalDateMath.elapsedDays(registeredOn, today) >= reviewIntervalDays` を用い、文字列比較やミリ秒差分を直接用いない。`reviewIntervalDays` の既定値は 14 とする。
 - Integration: `pickOneCandidate()` の乱数源は composition root から注入される RNG 関数を使い、既定実装だけが `Math.random` を包む。テストでは同じ注入点を固定値または stub に差し替える。選定対象は `listDueCandidates()` の返却順に対する index 抽選とする。
 - Validation: 13 日以下の問題が候補へ入らないことをテストする。
 - Risks: 日付差分計算のタイムゾーンずれに注意が必要で、前日未完了の提案が残っていても当日抽選の候補集合計算と整合させる必要がある。
@@ -1440,7 +1440,7 @@ classDiagram
 - `ProblemTitle` は trim 後に空でない文字列だけを受理する
 - `LocalDateKey` は `YYYY-MM-DD` のゼロ埋め形式に加え、暦上に実在する日付だけを受理する
 - `LocalDateKey` は常に `LocalDateProvider.today()` を通して生成し、比較と暦日差分は `LocalDateMath` を通してのみ扱う
-- 14 日経過判定は `LocalDateMath.elapsedDays(registeredOn, today) >= 14`、1 日 1 回判定は `LocalDateMath.isSameDay(lastDailyEvaluatedOn, today)` を基準に行う
+- 復習間隔日数の判定は `LocalDateMath.elapsedDays(registeredOn, today) >= reviewIntervalDays`、1 日 1 回判定は `LocalDateMath.isSameDay(lastDailyEvaluatedOn, today)` を基準に行う。`reviewIntervalDays` の既定値は 14 とし、開発時の build/dev では外部注入を許容する
 - 問題ページの `ProblemId` は `AtCoderPageAdapter.readProblemContextSource()` が返す `pathname` の `contestId` と `taskId` から導出する
 - 問題ページの `ProblemTitle` は `AtCoderPageAdapter.readProblemContextSource()` が返す `problemTitleText` から導出する
 - 提出詳細ページの `ProblemId` は `AtCoderPageAdapter.readProblemContextSource()` が返す `taskHref` から導出する
@@ -1561,7 +1561,7 @@ classDiagram
 
 ### Unit Tests
 - `LocalDateMath` が月跨ぎ・年跨ぎ・うるう年を含む暦日差を正しく返す
-- `CandidateSelectionService` が 14 日未満を除外し、14 日以上のみ抽出する
+- `CandidateSelectionService` が `reviewIntervalDays` 未満を除外し、`reviewIntervalDays` 以上のみ抽出する
 - `CandidateSelectionService` が due 候補 0 件で `no_due_candidates` を返す
 - `PopupViewModelFactory` が問題タイトルリンクと単一アクションボタンの状態を仕様どおりに返す
 - `PopupViewModelFactory` が `status === "complete"` かつ `hasDueCandidates === false` かつ `activeProblemId !== null` のとき `primaryActionKind = "fetch_next"` かつ `primaryAction` を無効化する

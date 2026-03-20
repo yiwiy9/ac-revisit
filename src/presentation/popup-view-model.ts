@@ -1,3 +1,4 @@
+import { REVIEW_INTERVAL_DAYS } from "../shared/date";
 import type { DailySuggestionState, ReviewItem } from "../shared/types";
 
 export interface PopupViewModelInput {
@@ -57,7 +58,7 @@ export function createPopupViewModelFactory(): PopupViewModelFactory {
               ? "今日の一問は完了済みです。必要ならもう一問で次に進めます。"
               : hasCompletedTodaySuggestion === true
                 ? "今日の一問は完了済みです。次に進める復習対象はありません。"
-                : "復習対象がありません。追加した問題は14日後に今日の一問として表示されます。",
+                : `復習対象がありません。追加した問題は${REVIEW_INTERVAL_DAYS}日後に今日の一問として表示されます。`,
         primaryAction: primaryActionEnabled
           ? { enabled: true, presentation: "normal" }
           : { enabled: false, presentation: "grayed" },

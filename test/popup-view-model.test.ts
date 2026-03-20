@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 
 import { createPopupViewModelFactory } from "../src/presentation/popup-view-model.ts";
+import { REVIEW_INTERVAL_DAYS } from "../src/shared/date.ts";
 
 const popupViewModelFactory = createPopupViewModelFactory();
 
@@ -87,7 +88,7 @@ test("PopupViewModelFactory disables complete when neither today's suggestion no
   expect(viewModel.todayLink).toEqual({ enabled: false, presentation: "grayed" });
   expect(viewModel.todayLinkLabel).toBe("今日の一問はありません");
   expect(viewModel.description).toBe(
-    "復習対象がありません。追加した問題は14日後に今日の一問として表示されます。",
+    `復習対象がありません。追加した問題は${REVIEW_INTERVAL_DAYS}日後に今日の一問として表示されます。`,
   );
   expect(viewModel.primaryActionKind).toBe("complete");
   expect(viewModel.primaryActionLabel).toBe("完了");

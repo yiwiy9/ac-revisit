@@ -2,7 +2,16 @@ import type { LocalDateKey } from "./types.ts";
 
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
-export const REVIEW_INTERVAL_DAYS = 14;
+declare const __AC_REVISIT_REVIEW_INTERVAL_DAYS__: number | undefined;
+
+const DEFAULT_REVIEW_INTERVAL_DAYS = 14;
+
+export const REVIEW_INTERVAL_DAYS =
+  typeof __AC_REVISIT_REVIEW_INTERVAL_DAYS__ === "number" &&
+  Number.isInteger(__AC_REVISIT_REVIEW_INTERVAL_DAYS__) &&
+  __AC_REVISIT_REVIEW_INTERVAL_DAYS__ >= 0
+    ? __AC_REVISIT_REVIEW_INTERVAL_DAYS__
+    : DEFAULT_REVIEW_INTERVAL_DAYS;
 
 export interface LocalDateProvider {
   today(): LocalDateKey;
