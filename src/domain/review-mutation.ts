@@ -169,7 +169,7 @@ export function createReviewMutationService({
       return writeWorkspace(reviewStore, {
         reviewItems,
         dailyState: {
-          activeProblemId: null,
+          activeProblemId: activeProblem.problemId,
           status: "complete",
           lastDailyEvaluatedOn: latestWorkspace.value.dailyState.lastDailyEvaluatedOn,
         },

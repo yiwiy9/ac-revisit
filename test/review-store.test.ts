@@ -203,6 +203,48 @@ test("ReviewStoreAdapter writes a single normalized snapshot with only the allow
   });
 });
 
+test("ReviewStoreAdapter preserves the completed problem ID when complete state still points at a visible title", () => {
+  const double = createMemoryStorageDouble();
+  const adapter = createReviewStoreAdapter(double.storage);
+
+  const result = adapter.writeWorkspace({
+    reviewItems: [
+      {
+        problemId: "abc100/abc100_a",
+        problemTitle: "A - Happy Birthday!",
+        registeredOn: "2026-03-02",
+      },
+    ],
+    dailyState: {
+      activeProblemId: "abc100/abc100_a",
+      status: "complete",
+      lastDailyEvaluatedOn: "2026-03-02",
+    },
+  });
+
+  expect(result).toEqual({
+    ok: true,
+    value: {
+      reviewItems: [
+        {
+          problemId: "abc100/abc100_a",
+          problemTitle: "A - Happy Birthday!",
+          registeredOn: "2026-03-02",
+        },
+      ],
+      dailyState: {
+        activeProblemId: "abc100/abc100_a",
+        status: "complete",
+        lastDailyEvaluatedOn: "2026-03-02",
+      },
+    },
+  });
+  expect(JSON.parse(double.writes[0].value)).toEqual({
+    version: 1,
+    payload: result.value,
+  });
+});
+
 test("ReviewStoreAdapter falls back to the canonical empty workspace when write input is logically inconsistent", () => {
   const double = createMemoryStorageDouble();
   const adapter = createReviewStoreAdapter(double.storage);

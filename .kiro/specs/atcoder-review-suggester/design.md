@@ -1447,7 +1447,7 @@ classDiagram
 - 提出詳細ページの `ProblemTitle` は `AtCoderPageAdapter.readProblemContextSource()` が返す `taskTitleText` から導出する
 - `status === "incomplete"` のとき、`dailyState.activeProblemId` は `reviewItems` に存在しなければならない。完了処理、同日中の提案中解除、または日跨ぎ stale な提案参照の解消後は同一更新内で `null` へ遷移する
 - `status === "complete"` かつ `activeProblemId === null` は、当日完了済み・候補 0 件の当日未提案・当日解除済み・日跨ぎ stale 参照解消済みのいずれかを表す
-- `status === "complete"` のとき `activeProblemId` は常に `null` とする
+- `status === "complete"` のとき `activeProblemId` は `null` または `reviewItems` 内の `problemId` を取りうる。`null` は当日未提案・当日解除済み・日跨ぎ stale 参照解消済みを表し、非 `null` は当日完了済み問題の表示用参照を表す
 - `status === "incomplete"` のとき `activeProblemId` は常に非 `null` とする
 - `ReviewStoreAdapter` は読み込み時に `reviewItems` の `problemId` 一意性、`ProblemId` 形式、`ProblemTitle` の受理条件、`LocalDateKey` の受理条件を検証し、違反時は保存形式不一致として扱う
 - `ReviewStoreAdapter` は読み込み時に `SchemaEnvelope` の必須キー、各フィールドの primitive 型、`ProblemId` 形式、`ProblemTitle`、`LocalDateKey` の構文と実在日付を検証し、違反時は保存形式不一致として扱う
@@ -1457,9 +1457,9 @@ classDiagram
 - `PopupPresenter.open({ source: "menu", today })` / `refresh({ source, today })` は表示前に `DailySuggestionService.ensureTodaySuggestion({ today, trigger: "menu" })` を実行し、その返却 `reviewWorkspace` を `PopupStateLoader.load({ mode: "workspace", today, reviewWorkspace })` へ渡す。`PopupPresenter.open({ source: "auto", today, prefetchedReviewWorkspace })` は bootstrap が消費した日次判定と取得済みスナップショットを再利用するため、`PopupStateLoader.load({ mode: "workspace", today, reviewWorkspace: prefetchedReviewWorkspace })` を使う。`refresh({ source: "auto", today })` でも当日提案の再確定は同じ経路を使うが、再描画後の表示 source は維持する。問題タイトルリンクと更新系操作の直前整合確認は、状態を書き換えないため `PopupStateLoader.load({ mode: "readonly", today })` で最新状態を取得し、保持中の `expectedDailyState` と最新 `dailyState` を `InteractionSessionValidator.validate(...)` へ渡す。ポップアップ内 mutation 成功後は `MutationOutcome.reviewWorkspace` を `PopupStateLoader.load({ mode: "workspace", today, reviewWorkspace: mutationOutcome.reviewWorkspace })` へ渡し、追加のストア再読取なしで再描画する
 - `ReviewMutationService.unregisterProblem()` は、入力 `problemId` が最新 `activeProblemId` と一致し、かつ `lastDailyEvaluatedOn` が入力 `today` と同日な場合だけ Requirement 3.5 の「今日の一問完了」遷移として扱う。日跨ぎ stale 状態で一致した場合は、`lastDailyEvaluatedOn` を変更せずに `activeProblemId = null`、`status = "complete"` へ正規化して dangling 参照を残さない
 - `ReviewMutationService.completeTodayProblem()` と `fetchNextTodayProblem()` は、入力 `expectedDailyState` と最新保存状態の `dailyState` に対して `InteractionSessionValidator.validate(...)` を実行し、`valid` の場合にのみ更新を適用する。`stale` の場合は `stale_session` を返して保存しない
-- `primaryActionKind === "fetch_next"` かつ `primaryAction` が有効になりうるのは `status === "complete"` かつ `activeProblemId === null` かつ `hasDueCandidates === true` のときだけである
-- `primaryActionKind === "complete"` かつ `primaryAction` が有効になりうるのは `status === "incomplete"` かつ `activeProblemId !== null` のときだけであり、`status === "complete"` かつ `hasDueCandidates === false` のときは `完了` disabled を返す
-- `todayLinkLabel` は `activeProblemId` に対応する `ReviewItem.problemTitle` を優先し、未解決時は `問題未選択` を使う
+- `primaryActionKind === "fetch_next"` かつ `primaryAction` が有効になりうるのは `status === "complete"` かつ `hasDueCandidates === true` のときだけである。完了済み問題の表示用に `activeProblemId !== null` を保持していても、この条件は変わらない
+- `primaryActionKind === "complete"` かつ `primaryAction` が有効になりうるのは `status === "incomplete"` かつ `activeProblemId !== null` のときだけであり、`status === "complete"` かつ `hasDueCandidates === false` かつ `activeProblemId === null` のときは `完了` disabled を返す
+- `todayLinkLabel` は `activeProblemId` に対応する `ReviewItem.problemTitle` を優先し、未解決時は `今日の一問はありません` を使う
 - `todayLink` の実際の遷移直前には `PopupPresenter` が `PopupStateLoader.load({ mode: "readonly", today })` で最新状態を取得し、`InteractionSessionValidator` による共通の事前整合チェックを行う。`stale` の場合は遷移せず `refresh({ source, today })` により当日提案確定後の状態へ再描画し、`valid` の場合に限り最新 `activeProblemId` から再構築した URL へ遷移する
 - 単一トランザクション対象:
   - 提案中解除
@@ -1584,7 +1584,7 @@ classDiagram
 - `ReviewStoreAdapter` が保存形式不一致時に部分復旧せず canonical empty state を返す
 - `ReviewStoreAdapter` が `status` と `activeProblemId` の不変条件違反を保存形式不一致として扱う
 - `ReviewStoreAdapter` が `status === "incomplete"` かつ `activeProblemId` が `reviewItems` に存在しない孤立状態を保存形式不一致として扱う
-- `ReviewStoreAdapter` が `status === "complete"` にもかかわらず `activeProblemId` が非 `null` の状態を保存形式不一致として扱う
+- `ReviewStoreAdapter` が `status === "complete"` かつ `activeProblemId !== null` の場合、その `activeProblemId` が `reviewItems` に存在しない孤立状態だけを保存形式不一致として扱う
 - `ReviewStoreAdapter` が `problemId` 重複を保存形式不一致として扱う
 - `ReviewStoreAdapter` が `problemTitle` の空文字または空白のみを保存形式不一致として扱う
 - `ReviewStoreAdapter` が保存前に `reviewItems` を `problemId` 昇順へ正規化する

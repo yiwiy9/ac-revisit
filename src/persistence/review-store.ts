@@ -168,12 +168,15 @@ function validateDailyState(
   }
 
   if (value.status === "complete") {
-    if (value.activeProblemId !== null) {
+    if (
+      value.activeProblemId !== null &&
+      (!isProblemId(value.activeProblemId) || !problemIds.has(value.activeProblemId))
+    ) {
       return null;
     }
 
     return {
-      activeProblemId: null,
+      activeProblemId: value.activeProblemId,
       status: "complete",
       lastDailyEvaluatedOn,
     };

@@ -239,7 +239,7 @@ test("ReviewMutationService completes today's problem by deleting and re-registe
           },
         ],
         dailyState: {
-          activeProblemId: null,
+          activeProblemId: "abc100/abc100_a",
           status: "complete",
           lastDailyEvaluatedOn: "2026-03-02",
         },
