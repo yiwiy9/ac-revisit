@@ -85,6 +85,7 @@ test("tooling config files exist and lock TypeScript plus Tampermonkey typing", 
   expect(mainSource).toMatch(/bootstrapUserscript\(\)/);
   expect(bootstrapSource).toMatch(/GM_getValue/);
   expect(bootstrapSource).toMatch(/GM_setValue/);
+  expect(bootstrapSource).toMatch(/readUserscriptWorkspaceSnapshot/);
   expect(mainSource).not.toMatch(/: any\b/);
   expect(bootstrapSource).not.toMatch(/: any\b/);
   expect(bootstrapSource).not.toMatch(/declare const GM_/);

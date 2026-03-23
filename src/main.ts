@@ -12,6 +12,7 @@ export {
 
 import {
   bootstrapUserscript,
+  readUserscriptWorkspaceSnapshot,
   type DiagnosticEvent,
   type DiagnosticSink,
 } from "./bootstrap/userscript";
@@ -24,10 +25,19 @@ function createConsoleDiagnosticSink(consoleRef: Pick<Console, "debug">): Diagno
   };
 }
 
+function logDevWorkspaceSnapshot(consoleRef: Pick<Console, "debug" | "warn">) {
+  try {
+    consoleRef.debug("ac-revisit:workspace", readUserscriptWorkspaceSnapshot());
+  } catch (error) {
+    consoleRef.warn("ac-revisit:workspace_dump_failed", error);
+  }
+}
+
 if (__AC_REVISIT_DEV__) {
   bootstrapUserscript({
     diagnosticSink: createConsoleDiagnosticSink(console),
   });
+  logDevWorkspaceSnapshot(console);
 } else {
   bootstrapUserscript();
 }

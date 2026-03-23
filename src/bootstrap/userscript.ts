@@ -42,6 +42,10 @@ export interface UserscriptStorageProbe {
   write(value: string): void;
 }
 
+export function readUserscriptWorkspaceSnapshot() {
+  return createReviewStoreAdapter(createUserscriptReviewStorage()).readWorkspace();
+}
+
 export interface UserscriptBootstrapResult {
   readonly session: "authenticated" | "anonymous";
   readonly menuEntryMounted: boolean;

@@ -193,6 +193,7 @@ test("buildUserscript can emit development metadata for local Tampermonkey updat
       /^\/\/ @updateURL\s+http:\/\/127\.0\.0\.1:4310\/ac-revisit\.dev\.user\.js$/m,
     );
     expect(output).toMatch(/debug\(`ac-revisit:\$\{event\.code\}`/);
+    expect(output).toMatch(/ac-revisit:workspace/);
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }

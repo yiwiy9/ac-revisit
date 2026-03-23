@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, test } from "vitest";
 
-import { bootstrapUserscript } from "../src/bootstrap/userscript.ts";
+import {
+  bootstrapUserscript,
+  readUserscriptWorkspaceSnapshot,
+} from "../src/bootstrap/userscript.ts";
 import { createReviewStoreAdapter } from "../src/persistence/review-store.ts";
 import type { PopupRequest } from "../src/bootstrap/userscript.ts";
 import type { ReviewStorePort } from "../src/persistence/review-store.ts";
@@ -18,6 +21,8 @@ const domDocument = globalThis.document;
 const PROBLEM_PAGE_PATH = "/contests/abc100/tasks/abc100_a";
 const CONTEST_PAGE_PATH = "/contests/abc100";
 const SUBMISSION_PAGE_PATH = "/contests/abc388/submissions/61566375";
+const originalGMGetValue = globalThis.GM_getValue;
+const originalGMSetValue = globalThis.GM_setValue;
 
 function setDocument(html: string, pathname = "/") {
   domDocument.body.innerHTML = html;
@@ -34,6 +39,53 @@ function seedWorkspace(storage: ReviewStorePort, workspace: ReviewWorkspace) {
 describe("bootstrapUserscript", () => {
   beforeEach(() => {
     setDocument("", "/");
+    globalThis.GM_getValue = originalGMGetValue;
+    globalThis.GM_setValue = originalGMSetValue;
+  });
+
+  test("reads the dev workspace snapshot through the userscript review storage adapter", () => {
+    const storageDouble = createMemoryStorageDouble();
+
+    seedWorkspace(storageDouble.storage, {
+      reviewItems: [
+        {
+          problemId: "abc100/abc100_a",
+          problemTitle: "A - Happy Birthday!",
+          registeredOn: "2026-02-16",
+        },
+      ],
+      dailyState: {
+        activeProblemId: "abc100/abc100_a",
+        status: "incomplete",
+        lastDailyEvaluatedOn: "2026-03-02",
+      },
+    });
+
+    globalThis.GM_getValue = (<T>(key: string, defaultValue: T) => {
+      const value = storageDouble.storage.get(key);
+      return value === null ? defaultValue : (value as T);
+    }) as typeof GM_getValue;
+    globalThis.GM_setValue = ((key: string, value: string) => {
+      storageDouble.storage.set(key, value);
+    }) as typeof GM_setValue;
+
+    expect(readUserscriptWorkspaceSnapshot()).toEqual({
+      ok: true,
+      value: {
+        reviewItems: [
+          {
+            problemId: "abc100/abc100_a",
+            problemTitle: "A - Happy Birthday!",
+            registeredOn: "2026-02-16",
+          },
+        ],
+        dailyState: {
+          activeProblemId: "abc100/abc100_a",
+          status: "incomplete",
+          lastDailyEvaluatedOn: "2026-03-02",
+        },
+      },
+    });
   });
 
   test("mounts the persistent menu entry only for authenticated sessions", () => {
