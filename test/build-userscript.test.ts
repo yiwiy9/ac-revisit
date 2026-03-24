@@ -58,7 +58,7 @@ test("buildUserscript emits a single userscript bundle with required metadata", 
     expect(output).toMatch(/^\/\/ @license\s+MIT$/m);
     expect(output).toMatch(/^\/\/ @version\s+0\.0\.0$/m);
     expect(output).toMatch(
-      /^\/\/ @description\s+AtCoder で復習したい問題を静かに提案する userscript$/m,
+      /^\/\/ @description\s+AtCoder の復習問題を登録し、今日の一問を提案する userscript$/m,
     );
     expect(output).toMatch(/^\/\/ @match\s+https:\/\/atcoder\.jp\/\*$/m);
     expect(output).toMatch(/^\/\/ @grant\s+GM_getValue$/m);

@@ -1,6 +1,6 @@
 # ac-revisit
 
-AtCoder 上で動作する Tampermonkey 向け userscript です。  
+AtCoder 上で動作する Tampermonkey 向け userscript です。ログイン済みユーザー向けに、
 復習対象として登録した問題から、14 日経過した問題を「今日の一問」として 1 問ずつ提案します。
 
 ## 必要環境
