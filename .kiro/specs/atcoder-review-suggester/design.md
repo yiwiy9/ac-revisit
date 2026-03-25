@@ -116,7 +116,7 @@
   - `src/persistence`
   - `src/presentation`
   - `src/shared`
-- Shared type source of truth: `ContestId`、`TaskId`、`ProblemId`、`ProblemTitle`、`LocalDateKey`、`Result`、`ReviewWorkspace` は [`src/shared/types.ts`](/workspaces/ac-revisit/src/shared/types.ts) を唯一の定義元とし、他層で再定義しない。`LocalDateKey` の生成と比較・暦日差分ルールは [`src/shared/date.ts`](/workspaces/ac-revisit/src/shared/date.ts) の `LocalDateProvider` と `LocalDateMath` に集約する。
+- Shared type source of truth: `ContestId`、`ProblemId`、`ProblemTitle`、`LocalDateKey`、`Result`、`ReviewWorkspace` は [`src/shared/types.ts`](/workspaces/ac-revisit/src/shared/types.ts) を唯一の定義元とし、他層で再定義しない。`LocalDateKey` の生成と比較・暦日差分ルールは [`src/shared/date.ts`](/workspaces/ac-revisit/src/shared/date.ts) の `LocalDateProvider` と `LocalDateMath` に集約する。
 - Boundary policy:
   - `AuthSessionGuard`、`ProblemContextResolver`、`CandidateSelectionService`、`ReviewMutationService`、`ReviewStoreAdapter`、`PopupViewModelFactory` は、要件またはテスト観点に直結するため独立責務として維持する
   - `AtCoderPageAdapter`、`ProblemContextResolver`、`ToggleMountCoordinator` は責務上は分けるが、MVP では同一 `src/runtime` モジュールまたは近接した少数ファイルへ集約してよく、追加の抽象レイヤーは増やさない
@@ -641,7 +641,7 @@ type ProblemContextResult =
   | { readonly kind: "resolved"; readonly problemId: ProblemId; readonly contestId: ContestId; readonly problemTitle: ProblemTitle }
   | { readonly kind: "not_applicable" }
   | { readonly kind: "unresolvable" };
-// `ContestId`, `TaskId`, `ProblemId`, and `ProblemTitle` are shared types imported from `src/shared/types.ts`.
+// `ContestId`, `ProblemId`, and `ProblemTitle` are shared types imported from `src/shared/types.ts`.
 ```
 
 **Implementation Notes**
