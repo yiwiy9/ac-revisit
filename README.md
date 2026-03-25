@@ -69,6 +69,14 @@ npm run build
 
 成果物は `dist/ac-revisit.user.js` に出力されます。
 
+## アップデート手順
+
+1. `package.json.version` を更新する
+2. `npm run verify` を実行する
+3. `npm run build` を実行する
+4. `dist/ac-revisit.user.js` を Greasy Fork に更新投稿する
+5. 投稿後にバージョン表示とインストール導線を確認する
+
 ## License
 
 MIT
