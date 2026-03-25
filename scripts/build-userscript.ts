@@ -112,6 +112,10 @@ export async function buildUserscript({
     throw new Error(`Published metadata must use package.json version: ${packageVersion}`);
   }
 
+  if (releaseChannel === "published" && extraMetadata.length > 0) {
+    throw new Error("Published builds must not define extra metadata entries");
+  }
+
   const bundleResult = await bundle({
     entryPoints: [resolvedEntryPointPath],
     bundle: true,

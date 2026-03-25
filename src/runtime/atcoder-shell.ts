@@ -6,8 +6,6 @@ const TOP_PAGE_MYPAGE_SELECTOR = ".header-mypage";
 const TOP_PAGE_MENU_SELECTOR = ".header-mypage_detail .header-mypage_list";
 const PROBLEM_HEADING_SELECTOR = ".col-sm-12 > span.h2";
 const PROBLEM_COMMENTARY_LINK_SELECTOR = `${PROBLEM_HEADING_SELECTOR} > a.btn`;
-const SUBMISSION_TASK_LINK_SELECTOR = '.col-sm-12 table a[href*="/tasks/"]';
-
 export const MENU_ENTRY_ID = "ac-revisit-menu-entry";
 export const MENU_ENTRY_LINK_ID = "ac-revisit-menu-entry-link";
 export const TOGGLE_BUTTON_ID = "ac-revisit-toggle-button";
@@ -189,7 +187,7 @@ export function createAtCoderPageAdapter(
         return { kind: "missing" };
       }
 
-      const taskLink = findElement(documentRef, SUBMISSION_TASK_LINK_SELECTOR);
+      const taskLink = findSubmissionProblemTaskLink(documentRef);
 
       return taskLink === null
         ? { kind: "missing" }
@@ -207,7 +205,7 @@ export function createAtCoderPageAdapter(
       }
 
       if (page.kind === "submission_detail") {
-        const taskLink = findElement(documentRef, SUBMISSION_TASK_LINK_SELECTOR);
+        const taskLink = findSubmissionProblemTaskLink(documentRef);
 
         return {
           kind: "submission_detail",
@@ -435,6 +433,30 @@ function findLegacyUserMenuAnchor(documentRef: Document): HTMLElement | null {
   }
 
   return candidates.at(0) ?? null;
+}
+
+function findSubmissionProblemTaskLink(root: ParentNode): HTMLAnchorElement | null {
+  const rows = Array.from(root.querySelectorAll(".col-sm-12 table tr"));
+
+  for (const row of rows) {
+    if (!(row instanceof HTMLTableRowElement)) {
+      continue;
+    }
+
+    const headingCell = row.querySelector("th");
+
+    if (readElementText(headingCell) !== "問題") {
+      continue;
+    }
+
+    const taskLink = row.querySelector('a[href*="/tasks/"]');
+
+    if (taskLink instanceof HTMLAnchorElement) {
+      return taskLink;
+    }
+  }
+
+  return null;
 }
 
 function readTrimmedText(root: ParentNode, selector: string): string | null {

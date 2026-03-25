@@ -158,6 +158,27 @@ test("buildUserscript fails when published metadata version drifts from package.
   }
 });
 
+test("buildUserscript fails when published builds try to add extra metadata", async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), "ac-revisit-build-"));
+
+  try {
+    await expect(
+      buildUserscript({
+        packageJsonPath: new URL("../package.json", import.meta.url),
+        outputPath: pathToFileURL(path.join(tempDir, "ac-revisit.user.js")),
+        extraMetadata: [
+          {
+            key: "require",
+            value: "https://example.com/remote.js",
+          },
+        ],
+      }),
+    ).rejects.toThrow(/Published builds must not define extra metadata entries/);
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
 test("buildUserscript can emit development metadata for local Tampermonkey updates", async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), "ac-revisit-build-"));
 

@@ -43,6 +43,7 @@ test("tooling config files exist and lock TypeScript plus Tampermonkey typing", 
     eslintConfigRaw,
     mainSource,
     bootstrapSource,
+    platformPortsSource,
     buildScript,
     devScript,
     vitestConfig,
@@ -56,6 +57,7 @@ test("tooling config files exist and lock TypeScript plus Tampermonkey typing", 
     readFile(new URL("../eslint.config.js", import.meta.url), "utf8"),
     readFile(new URL("../src/main.ts", import.meta.url), "utf8"),
     readFile(new URL("../src/bootstrap/userscript.ts", import.meta.url), "utf8"),
+    readFile(new URL("../src/bootstrap/platform-ports.ts", import.meta.url), "utf8"),
     readFile(new URL("../scripts/build-userscript.ts", import.meta.url), "utf8"),
     readFile(new URL("../scripts/dev-userscript.ts", import.meta.url), "utf8"),
     readFile(new URL("../vitest.config.ts", import.meta.url), "utf8"),
@@ -82,12 +84,14 @@ test("tooling config files exist and lock TypeScript plus Tampermonkey typing", 
   expect(scriptsTsconfig.compilerOptions.lib).toEqual(["ES2022"]);
   expect(eslintConfigRaw).toMatch(/typescript-eslint/);
   expect(mainSource).toMatch(/\.\/bootstrap\/userscript/);
-  expect(mainSource).toMatch(/bootstrapUserscript\(\)/);
-  expect(bootstrapSource).toMatch(/GM_getValue/);
-  expect(bootstrapSource).toMatch(/GM_setValue/);
+  expect(mainSource).toMatch(/createUserscriptPlatformPorts/);
+  expect(mainSource).toMatch(/bootstrapUserscript\(\{\s*platform:/s);
+  expect(platformPortsSource).toMatch(/GM_getValue/);
+  expect(platformPortsSource).toMatch(/GM_setValue/);
   expect(bootstrapSource).toMatch(/readUserscriptWorkspaceSnapshot/);
   expect(mainSource).not.toMatch(/: any\b/);
   expect(bootstrapSource).not.toMatch(/: any\b/);
+  expect(platformPortsSource).not.toMatch(/: any\b/);
   expect(bootstrapSource).not.toMatch(/declare const GM_/);
   expect(buildScript).toMatch(/interface BuildUserscriptOptions/);
   expect(buildScript).toMatch(/from "esbuild"/);

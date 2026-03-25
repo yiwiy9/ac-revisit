@@ -81,7 +81,7 @@
 | 6.14 | 中立配色と標準ボタン表現 | PopupPresenter | Presentation Contract | Popup actions |
 | 6.15 | 狭い viewport に収まる幅制約 | PopupPresenter | Presentation Contract | Popup actions |
 | 6.16 | header close と footer 閉じるの両方を提供 | PopupPresenter | DOM Contract, Presentation Contract | Popup actions |
-| 6.17 | 主要アクションを footer 内で分離配置 | PopupPresenter | DOM Contract, Presentation Contract | Popup actions |
+| 6.17 | 本文内の主要アクションを近接配置しつつ footer に補助操作を分離配置 | PopupPresenter | DOM Contract, Presentation Contract | Popup actions |
 | 7.1 | 自動 AC 検知なし | UserscriptBootstrap | Service Interface | Scope guard |
 | 7.2 | 一覧画面なし | MenuEntryAdapter, PopupPresenter | Service Interface | Scope guard |
 | 7.3 | デュー可視化なし | PopupViewModelFactory | State Contract | Scope guard |
@@ -1263,9 +1263,9 @@ type PopupStateLoadError = { readonly kind: "storage_unavailable" };
 - `activeProblemId` から `/contests/{contestId}/tasks/{taskId}` 形式のリンクを再構築する
 - 固定見出し「今日の一問」を表示し、その直下の問題タイトルリンクには `PopupViewModel.todayLinkLabel` を使う
 - ポップアップは header、body、footer の 3 領域を持つ一般的なモーダル骨格を採用する
-- body には今日の一問の状態だけを置き、主要操作は footer に集約して視線誘導を分離する
+- body には今日の一問の状態と主要操作を近接配置し、footer には補助的な dismiss 操作だけを置いて一般的なモーダル導線を維持する
 - header 右上に close 操作を置き、dismiss 操作の発見性を一般的なモーダルに合わせる
-- footer には補助操作と主要操作を同居させつつ、主要操作を視覚的に分離して配置する
+- footer には補助操作を配置し、主要操作は本文内で問題タイトルや補助文と近接した位置に置く
 - ポップアップ内の明示操作（問題タイトルリンク押下と状態連動アクションボタン押下）は、単一の事前整合チェック経路を通す
 - 事前整合チェックの判定基準は `InteractionSessionValidator` に委譲し、自身で stale 判定規則を重複定義しない
 - 整合確認に失敗した場合は、遷移や更新を行わず `refresh()` による当日提案確定を含む再描画へ委譲する
@@ -1339,7 +1339,7 @@ type PopupError =
 - Integration: modal root、overlay、content root、close ボタン、action 要素の `id` / `class` / `data-*` は `Presentation DOM Contract` で定義した `ac-revisit-` 接頭辞付き識別子だけを使い、AtCoder 既存要素との CSS 競合を避ける。
 - Integration: modal content は header、body、footer の固定サブツリーを持ち、見出し、本文、操作群の責務を DOM 上でも分離する。`PopupViewModel` が変わってもこの骨格は変えない。
 - Integration: header 右上の close 操作は、一般的なモーダルに倣った位置に固定し、footer にも補助的な dismiss 操作を置いてよい。どちらも同じ dismiss 経路へ束ねる。
-- Integration: footer の操作群では、主要更新ボタンを補助的な閉じる操作から位置またはスタイルで分離し、本文領域に主要更新ボタンを置かない。
+- Integration: 主要更新ボタンは本文領域に置き、固定見出し、補助文、問題タイトルと近接した縦並びで表示する。footer には補助的な閉じる操作だけを置き、役割を分離する。
 - Integration: `open()` は `ensureModalRoot()` 相当の内部手順で `ac-revisit-popup-root` の存在を先に確認し、既存 root があれば DOM ノード再生成を行わず内容更新だけを実施する。
 - Integration: action click handler、close button click handler、overlay click handler、`Escape` key handler は modal root 生成時に 1 回だけ束縛し、再描画では handler を再登録しない。再描画時は表示文言、href、disabled 相当属性だけを更新する。
 - Integration: `PopupPresenter` の公開責務は維持するが、実装時は同一モジュール内の内部 helper を `modal shell management`、`render patching`、`interaction routing` の 3 役割程度に分け、DOM 構築・再描画・操作分岐のロジックを 1 つの関数へ集中させない。
@@ -1367,7 +1367,7 @@ type PopupError =
 - Validation: 「今日の一問」見出しは常に表示され、問題タイトルリンクは `ReviewItem.problemTitle` をラベルとして使うことを確認する。
 - Validation: アクションボタンは 1 つだけ表示され、状態に応じて `完了` / `もう一問` を切り替えることを確認する。
 - Validation: モーダルが header / body / footer の 3 領域を持ち、狭い横幅でも主要操作が viewport 内に収まることを確認する。
-- Validation: close 操作が header 右上と footer の一般的な位置から利用でき、主要更新ボタンが footer 内で補助操作と視覚的に分離されていることを確認する。
+- Validation: close 操作が header 右上と footer の一般的な位置から利用でき、主要更新ボタンが本文内で問題タイトルと近接配置されていることを確認する。
 - Validation: 問題タイトルリンクとアクションボタンが共通の事前整合チェック経路を通り、日跨ぎまたは状態不一致の stale 状態では遷移・更新せず `refresh({ source, today })` により最新状態へ収束することを確認する。
 - Validation: 問題タイトルリンクは同日内の再検証で無効化された場合または別問題へ差し替わった場合は遷移しないことを確認する。
 - Validation: ポップアップ内操作で `storage_unavailable` 以外の `MutationError` が返った場合は、追加メッセージなしで `refresh({ source, today })` により最新状態へ収束することを確認する。

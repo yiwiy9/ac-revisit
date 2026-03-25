@@ -404,6 +404,39 @@ describe("atcoder shell", () => {
         taskTitleText: "D - Coming of Age Celebration",
       });
     });
+
+    test("reads the submission detail context only from the 問題 row task link", () => {
+      setDocument(
+        `
+          <div class="col-sm-12">
+            <table class="table table-bordered">
+              <tbody>
+                <tr>
+                  <th>コンテスト</th>
+                  <td><a href="/contests/abc388/tasks/abc388_a">Contest Landing</a></td>
+                </tr>
+              </tbody>
+            </table>
+            <table class="table table-bordered">
+              <tbody>
+                <tr>
+                  <th>問題</th>
+                  <td><a href="/contests/abc388/tasks/abc388_d">D - Coming of Age Celebration</a></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        `,
+        "/contests/abc388/submissions/61566375",
+      );
+      const adapter = createAtCoderPageAdapter(domWindow, domDocument);
+
+      expect(adapter.readProblemContextSource()).toEqual({
+        kind: "submission_detail",
+        taskHref: "/contests/abc388/tasks/abc388_d",
+        taskTitleText: "D - Coming of Age Celebration",
+      });
+    });
   });
 
   describe("ProblemContextResolver", () => {
@@ -490,6 +523,51 @@ describe("atcoder shell", () => {
       expect(button).toBeTruthy();
       expect(button?.previousElementSibling).toBe(taskLink);
       expect(heading?.nextElementSibling).not.toBe(button);
+    });
+
+    test("mounts the toggle after the 問題 row link instead of unrelated task links", () => {
+      setDocument(
+        `
+          <div class="col-sm-12">
+            <p><span class="h2">提出 #61566375</span></p>
+            <table class="table table-bordered">
+              <tbody>
+                <tr>
+                  <th>コンテスト</th>
+                  <td><a id="contest-task-link" href="/contests/abc388/tasks/abc388_a">Contest Landing</a></td>
+                </tr>
+              </tbody>
+            </table>
+            <table class="table table-bordered">
+              <tbody>
+                <tr>
+                  <th>問題</th>
+                  <td><a id="problem-task-link" href="/contests/abc388/tasks/abc388_d">D - Coming of Age Celebration</a></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        `,
+        "/contests/abc388/submissions/61566375",
+      );
+      const adapter = createAtCoderPageAdapter(domWindow, domDocument);
+      const toggleMount = createToggleMountCoordinator({ pageAdapter: adapter });
+
+      expect(toggleMount.mount()).toEqual({
+        ok: true,
+        value: {
+          mounted: true,
+          isRegistered: false,
+        },
+      });
+
+      const button = domDocument.querySelector("#ac-revisit-toggle-button");
+      const contestTaskLink = domDocument.querySelector("#contest-task-link");
+      const problemTaskLink = domDocument.querySelector("#problem-task-link");
+
+      expect(button).toBeTruthy();
+      expect(button?.previousElementSibling).toBe(problemTaskLink);
+      expect(button?.previousElementSibling).not.toBe(contestTaskLink);
     });
 
     test("mounts the toggle immediately after the commentary button on problem pages when it exists", () => {

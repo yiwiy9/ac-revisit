@@ -16,6 +16,7 @@ import {
   createMenuEntryAdapter,
   createToggleMountCoordinator,
 } from "../runtime/atcoder-shell";
+import { createUserscriptPlatformPorts, type PlatformPorts } from "./platform-ports";
 
 export type DiagnosticCode = "anchor_missing" | "problem_unresolvable" | "storage_unavailable";
 
@@ -36,7 +37,7 @@ export interface PopupRequest {
 }
 
 export function readUserscriptWorkspaceSnapshot() {
-  return createReviewStoreAdapter(createUserscriptReviewStorage()).readWorkspace();
+  return createReviewStoreAdapter(createUserscriptPlatformPorts().reviewStorage).readWorkspace();
 }
 
 export interface UserscriptBootstrapResult {
@@ -46,27 +47,19 @@ export interface UserscriptBootstrapResult {
 }
 
 export interface BootstrapUserscriptDependencies {
+  readonly platform?: Partial<PlatformPorts>;
   readonly reviewStorage?: ReviewStorePort;
   readonly getToday?: () => LocalDateKey;
   readonly openPopup?: (input: PopupRequest) => void;
   readonly diagnosticSink?: DiagnosticSink;
-}
-
-function createUserscriptReviewStorage(): ReviewStorePort {
-  return {
-    get(key) {
-      return GM_getValue<string | null>(key, null);
-    },
-    set(key, value) {
-      GM_setValue(key, value);
-    },
-  };
+  readonly rng?: () => number;
 }
 
 export function bootstrapUserscript(
   dependencies: BootstrapUserscriptDependencies = {},
 ): UserscriptBootstrapResult {
-  const recordDiagnostic = createDiagnosticRecorder(dependencies.diagnosticSink);
+  const platform = resolvePlatformPorts(dependencies);
+  const recordDiagnostic = createDiagnosticRecorder(platform.diagnosticSink);
   const pageAdapter = createAtCoderPageAdapter();
   const sessionGuard = createAuthSessionGuard(pageAdapter);
   const session = sessionGuard.resolveSession();
@@ -83,12 +76,11 @@ export function bootstrapUserscript(
 
   const localDateProvider = createLocalDateProvider();
   const getToday = dependencies.getToday ?? (() => localDateProvider.today());
-  const reviewStore = createReviewStoreAdapter(
-    dependencies.reviewStorage ?? createUserscriptReviewStorage(),
-  );
+  const reviewStore = createReviewStoreAdapter(platform.reviewStorage);
   const localDateMath = createLocalDateMath();
   const candidateSelectionService = createCandidateSelectionService({
     localDateMath,
+    random: platform.rng,
   });
   const dailySuggestionService = createDailySuggestionService({
     reviewStore,
@@ -362,5 +354,21 @@ export function bootstrapUserscript(
 function createDiagnosticRecorder(diagnosticSink?: DiagnosticSink): DiagnosticSink {
   return (event) => {
     diagnosticSink?.(event);
+  };
+}
+
+function resolvePlatformPorts(dependencies: BootstrapUserscriptDependencies): PlatformPorts {
+  const reviewStorage =
+    dependencies.platform?.reviewStorage ??
+    dependencies.reviewStorage ??
+    createUserscriptPlatformPorts().reviewStorage;
+  const rng = dependencies.platform?.rng ?? dependencies.rng ?? Math.random;
+  const diagnosticSink =
+    dependencies.platform?.diagnosticSink ?? dependencies.diagnosticSink ?? (() => undefined);
+
+  return {
+    rng,
+    reviewStorage,
+    diagnosticSink,
   };
 }

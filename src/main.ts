@@ -7,21 +7,12 @@ export {
   type PopupRequest,
   type UserscriptBootstrapResult,
 } from "./bootstrap/userscript";
+export { createUserscriptPlatformPorts, type PlatformPorts } from "./bootstrap/platform-ports";
 
-import {
-  bootstrapUserscript,
-  readUserscriptWorkspaceSnapshot,
-  type DiagnosticEvent,
-  type DiagnosticSink,
-} from "./bootstrap/userscript";
+import { bootstrapUserscript, readUserscriptWorkspaceSnapshot } from "./bootstrap/userscript";
+import { createUserscriptPlatformPorts } from "./bootstrap/platform-ports";
 
 declare const __AC_REVISIT_DEV__: boolean;
-
-function createConsoleDiagnosticSink(consoleRef: Pick<Console, "debug">): DiagnosticSink {
-  return (event: DiagnosticEvent) => {
-    consoleRef.debug(`ac-revisit:${event.code}`, event.component, event.operation);
-  };
-}
 
 function logDevWorkspaceSnapshot(consoleRef: Pick<Console, "debug" | "warn">) {
   try {
@@ -33,9 +24,14 @@ function logDevWorkspaceSnapshot(consoleRef: Pick<Console, "debug" | "warn">) {
 
 if (__AC_REVISIT_DEV__) {
   bootstrapUserscript({
-    diagnosticSink: createConsoleDiagnosticSink(console),
+    platform: createUserscriptPlatformPorts({
+      dev: true,
+      consoleRef: console,
+    }),
   });
   logDevWorkspaceSnapshot(console);
 } else {
-  bootstrapUserscript();
+  bootstrapUserscript({
+    platform: createUserscriptPlatformPorts(),
+  });
 }

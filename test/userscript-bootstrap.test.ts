@@ -412,6 +412,61 @@ describe("bootstrapUserscript", () => {
     ]);
   });
 
+  test("keeps bootstrap auto-open available when toggle mount fails closed", () => {
+    const storageDouble = createMemoryStorageDouble();
+    const popupCalls: PopupRequest[] = [];
+
+    seedWorkspace(storageDouble.storage, {
+      reviewItems: [
+        {
+          problemId: "abc100/abc100_a",
+          problemTitle: "A - Happy Birthday!",
+          registeredOn: "2026-02-16",
+        },
+      ],
+      dailyState: {
+        activeProblemId: null,
+        status: "complete",
+        lastDailyEvaluatedOn: null,
+      },
+    });
+    setDocument(
+      `
+        ${authenticatedHeaderHtml()}
+        <div class="col-sm-12">
+          <div>A - Happy Birthday!</div>
+        </div>
+      `,
+      PROBLEM_PAGE_PATH,
+    );
+
+    const result = bootstrapUserscript({
+      reviewStorage: storageDouble.storage,
+      getToday: () => "2026-03-02",
+      openPopup(input) {
+        popupCalls.push(input);
+      },
+    });
+
+    expect(result).toEqual({
+      session: "authenticated",
+      menuEntryMounted: true,
+      toggleMounted: false,
+    });
+    expect(domDocument.querySelector("#ac-revisit-toggle-button")).toBeNull();
+    expect(popupCalls).toEqual([
+      {
+        source: "bootstrap",
+        today: "2026-03-02",
+        dailyState: {
+          activeProblemId: "abc100/abc100_a",
+          status: "incomplete",
+          lastDailyEvaluatedOn: "2026-03-02",
+        },
+      },
+    ]);
+  });
+
   test("renders the shared popup shell by default for bootstrap auto-open", () => {
     const storageDouble = createMemoryStorageDouble();
 
