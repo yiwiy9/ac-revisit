@@ -1,7 +1,6 @@
 export type LocalDateKey = string;
 
 export type ContestId = string;
-export type TaskId = string;
 export type ProblemId = string;
 export type ProblemTitle = string;
 

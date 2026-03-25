@@ -17,8 +17,6 @@ import {
   createToggleMountCoordinator,
 } from "../runtime/atcoder-shell";
 
-const STORAGE_PROBE_KEY = "ac-revisit:toolchain-probe";
-
 export type DiagnosticCode = "anchor_missing" | "problem_unresolvable" | "storage_unavailable";
 
 export interface DiagnosticEvent {
@@ -37,11 +35,6 @@ export interface PopupRequest {
   readonly hasDueCandidates?: boolean;
 }
 
-export interface UserscriptStorageProbe {
-  read(): string | null;
-  write(value: string): void;
-}
-
 export function readUserscriptWorkspaceSnapshot() {
   return createReviewStoreAdapter(createUserscriptReviewStorage()).readWorkspace();
 }
@@ -57,17 +50,6 @@ export interface BootstrapUserscriptDependencies {
   readonly getToday?: () => LocalDateKey;
   readonly openPopup?: (input: PopupRequest) => void;
   readonly diagnosticSink?: DiagnosticSink;
-}
-
-export function createUserscriptStorageProbe(): UserscriptStorageProbe {
-  return {
-    read() {
-      return GM_getValue<string | null>(STORAGE_PROBE_KEY, null);
-    },
-    write(value) {
-      return GM_setValue(STORAGE_PROBE_KEY, value);
-    },
-  };
 }
 
 function createUserscriptReviewStorage(): ReviewStorePort {
