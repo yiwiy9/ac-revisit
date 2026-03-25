@@ -1,7 +1,7 @@
 # Technology Stack
 
-> updated_at: 2026-03-17
-> update_reason: ローカル開発用 userscript 配信フローと scripts/toolchain 境界を実装に合わせて追記
+> updated_at: 2026-03-25
+> update_reason: ビルド時定数注入による復習間隔設定と dev 専用診断境界を実装に合わせて追記
 
 ## Architecture
 
@@ -13,6 +13,7 @@
 - **Runtime**: Browser (Tampermonkey), build/test time は Node.js
 - **Packaging**: esbuild で単一 `.user.js` を生成
 - **Local Dev Delivery**: `tsx` + Node.js 標準 `http/fs` を使い、ローカル配信用 `.dev.user.js` を再ビルドしながら配信する
+- **Build-time Flags**: esbuild の `define` で dev 判定と復習間隔を注入し、実行時設定ファイルを持ち込まない
 
 ## Key Libraries
 
@@ -47,6 +48,7 @@
 - `.prettierignore` には配布物、依存ディレクトリ、エージェント管理ディレクトリ、spec/steering 以外の機械管理領域を含め、不要な整形対象を広げない。
 - 開発時の標準入口は `npm run dev` とし、ローカル HTTP 配信される dev userscript を Tampermonkey へ登録して確認する。
 - dev 配信物の `downloadURL` / `updateURL` はローカルサーバーを向き、`@version` は再ビルドごとに更新される一時値を使う。
+- 復習間隔は `AC_REVISIT_REVIEW_INTERVAL_DAYS` で build/dev 起動時にだけ上書きできる。未指定時の標準値は 14 日とし、永続設定や UI 設定へは広げない。
 
 ### Testing
 
@@ -78,6 +80,7 @@
 - 日付判定はローカル暦日の `YYYY-MM-DD` キーへ正規化してから比較する。
 - UI 更新前の整合確認を入れ、stale 状態では操作を続行せず再描画へ戻す。
 - build 用 script と dev 用 script は分離し、公開用 metadata とローカル検証用 metadata を混在させない。
+- dev 専用の診断出力と workspace dump は `__AC_REVISIT_DEV__` が真の build にだけ含め、公開 build では観測用コードを常用しない。
 
 ---
 _依存関係の一覧ではなく、実装判断に影響する技術基準だけを保持する_

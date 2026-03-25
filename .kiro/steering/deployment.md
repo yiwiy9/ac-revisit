@@ -29,6 +29,7 @@ npm run build
 - `npm run build` は、`verify` 成功後の成果物生成コマンドとして扱う。
 - `npm run build:userscript` は補助用途であり、公開判断の根拠は `npm run build` または `verify` 済みであることに置く。
 - 公開作業は、生成された `dist/ac-revisit.user.js` を確認してから行う。
+- `AC_REVISIT_REVIEW_INTERVAL_DAYS` を付けた build は公開物の動作仕様を変えるため、意図した仕様変更として扱い、未指定の 14 日 build と混同しない。
 
 ## Quality Gates
 
