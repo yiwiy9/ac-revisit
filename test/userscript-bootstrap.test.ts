@@ -606,7 +606,7 @@ describe("bootstrapUserscript", () => {
         {
           problemId: "abc100/abc100_a",
           problemTitle: "A - Happy Birthday!",
-          registeredOn: "2026-02-20",
+          registeredOn: "2026-02-24",
         },
       ],
       dailyState: {

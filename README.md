@@ -1,7 +1,7 @@
 # ac-revisit
 
 AtCoder 上で動作する Tampermonkey 向け userscript です。ログイン済みユーザー向けに、
-復習対象として登録した問題から、14 日経過した問題を「今日の一問」として 1 問ずつ提案します。
+復習対象として登録した問題から、7 日経過した問題を「今日の一問」として 1 問ずつ提案します。
 
 ## 必要環境
 
@@ -38,7 +38,7 @@ http://127.0.0.1:4310/ac-revisit.dev.user.js
 - `127.0.0.1` 固定は IPv4/IPv6 解決差異を避けるためです。
 - ポート変更が必要なら `PORT=xxxx npm run dev` を使えます。
 - `npm run dev` のたびに dev 用 `@version` が自動更新されるため、Tampermonkey の「更新を確認」で反映できます。
-- `AC_REVISIT_REVIEW_INTERVAL_DAYS` を指定すると、`build` / `dev` の起動時に復習間隔を外部から注入できます。未指定時は `14` です。
+- `AC_REVISIT_REVIEW_INTERVAL_DAYS` を指定すると、`build` / `dev` の起動時に復習間隔を外部から注入できます。未指定時は `7` です。
 - たとえば即時に候補化したいときは `AC_REVISIT_REVIEW_INTERVAL_DAYS=0 npm run dev` を使います。
 - 指定値は 0 以上の整数のみ受け付け、不正値なら build を失敗させます。
 

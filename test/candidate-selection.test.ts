@@ -2,7 +2,7 @@ import { expect, test } from "vitest";
 
 import { createCandidateSelectionService } from "../src/domain/candidate-selection.ts";
 
-test("CandidateSelectionService lists only problems due after the fixed 14-day interval", () => {
+test("CandidateSelectionService lists only problems due after the fixed 7-day interval", () => {
   const service = createCandidateSelectionService();
 
   const result = service.listDueCandidates({
@@ -11,17 +11,17 @@ test("CandidateSelectionService lists only problems due after the fixed 14-day i
       {
         problemId: "abc100/abc100_a",
         problemTitle: "A - Happy Birthday!",
-        registeredOn: "2026-02-17",
+        registeredOn: "2026-02-24",
       },
       {
         problemId: "abc100/abc100_b",
         problemTitle: "B - Ringo's Favorite Numbers",
-        registeredOn: "2026-02-16",
+        registeredOn: "2026-02-23",
       },
       {
         problemId: "abc100/abc100_c",
         problemTitle: "C - Daydream",
-        registeredOn: "2026-02-10",
+        registeredOn: "2026-02-20",
       },
     ],
   });
@@ -30,12 +30,12 @@ test("CandidateSelectionService lists only problems due after the fixed 14-day i
     {
       problemId: "abc100/abc100_b",
       problemTitle: "B - Ringo's Favorite Numbers",
-      registeredOn: "2026-02-16",
+      registeredOn: "2026-02-23",
     },
     {
       problemId: "abc100/abc100_c",
       problemTitle: "C - Daydream",
-      registeredOn: "2026-02-10",
+      registeredOn: "2026-02-20",
     },
   ]);
 });
@@ -80,7 +80,7 @@ test("CandidateSelectionService returns no_due_candidates when nothing is due", 
       {
         problemId: "abc100/abc100_a",
         problemTitle: "A - Happy Birthday!",
-        registeredOn: "2026-02-18",
+        registeredOn: "2026-02-24",
       },
     ],
   });

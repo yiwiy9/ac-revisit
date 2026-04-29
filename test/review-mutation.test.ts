@@ -430,7 +430,7 @@ test("ReviewMutationService returns candidate_unavailable when no due problems r
       {
         problemId: "abc100/abc100_a",
         problemTitle: "A - Happy Birthday!",
-        registeredOn: "2026-02-18",
+        registeredOn: "2026-02-24",
       },
     ],
     dailyState: {

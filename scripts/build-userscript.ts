@@ -154,7 +154,7 @@ function resolveReviewIntervalDaysFromEnv(): number {
   const rawValue = process.env[REVIEW_INTERVAL_DAYS_ENV_NAME];
 
   if (rawValue === undefined) {
-    return 14;
+    return 7;
   }
 
   const parsedValue = Number(rawValue);

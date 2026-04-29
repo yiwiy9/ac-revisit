@@ -1,6 +1,6 @@
 # Product Overview
 
-`ac-revisit` は AtCoder 上で動作する Tampermonkey 向け userscript であり、復習したい問題をブラウザ内だけで静かに管理し、14 日経過後に「今日の一問」として 1 問ずつ提案する。
+`ac-revisit` は AtCoder 上で動作する Tampermonkey 向け userscript であり、復習したい問題をブラウザ内だけで静かに管理し、7 日経過後に「今日の一問」として 1 問ずつ提案する。
 
 ## Core Capabilities
 

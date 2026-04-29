@@ -121,7 +121,7 @@ test("DailySuggestionService clears stale prior-day suggestions when no due cand
         {
           problemId: "abc100/abc100_a",
           problemTitle: "A - Happy Birthday!",
-          registeredOn: "2026-02-18",
+          registeredOn: "2026-02-24",
         },
       ],
       dailyState: {
@@ -152,7 +152,7 @@ test("DailySuggestionService clears stale prior-day suggestions when no due cand
           {
             problemId: "abc100/abc100_a",
             problemTitle: "A - Happy Birthday!",
-            registeredOn: "2026-02-18",
+            registeredOn: "2026-02-24",
           },
         ],
         dailyState: {
@@ -179,7 +179,7 @@ test("DailySuggestionService does not auto-open on bootstrap when the first dail
         {
           problemId: "abc100/abc100_a",
           problemTitle: "A - Happy Birthday!",
-          registeredOn: "2026-02-18",
+          registeredOn: "2026-02-24",
         },
       ],
       dailyState: {
@@ -210,7 +210,7 @@ test("DailySuggestionService does not auto-open on bootstrap when the first dail
           {
             problemId: "abc100/abc100_a",
             problemTitle: "A - Happy Birthday!",
-            registeredOn: "2026-02-18",
+            registeredOn: "2026-02-24",
           },
         ],
         dailyState: {

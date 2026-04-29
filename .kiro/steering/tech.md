@@ -48,7 +48,7 @@
 - `.prettierignore` には配布物、依存ディレクトリ、エージェント管理ディレクトリ、spec/steering 以外の機械管理領域を含め、不要な整形対象を広げない。
 - 開発時の標準入口は `npm run dev` とし、ローカル HTTP 配信される dev userscript を Tampermonkey へ登録して確認する。
 - dev 配信物の `downloadURL` / `updateURL` はローカルサーバーを向き、`@version` は再ビルドごとに更新される一時値を使う。
-- 復習間隔は `AC_REVISIT_REVIEW_INTERVAL_DAYS` で build/dev 起動時にだけ上書きできる。未指定時の標準値は 14 日とし、永続設定や UI 設定へは広げない。
+- 復習間隔は `AC_REVISIT_REVIEW_INTERVAL_DAYS` で build/dev 起動時にだけ上書きできる。未指定時の標準値は 7 日とし、永続設定や UI 設定へは広げない。
 
 ### Testing
 

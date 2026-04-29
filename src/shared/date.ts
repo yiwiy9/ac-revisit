@@ -4,7 +4,7 @@ const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
 declare const __AC_REVISIT_REVIEW_INTERVAL_DAYS__: number | undefined;
 
-const DEFAULT_REVIEW_INTERVAL_DAYS = 14;
+const DEFAULT_REVIEW_INTERVAL_DAYS = 7;
 
 export const REVIEW_INTERVAL_DAYS =
   typeof __AC_REVISIT_REVIEW_INTERVAL_DAYS__ === "number" &&

@@ -21,7 +21,7 @@
 
 ### Domain Services
 **Location**: `/src/domain/`  
-**Purpose**: 14 日ルール、日次選定、登録/解除/完了/再抽選、stale 判定など副作用境界の中心。  
+**Purpose**: 7 日ルール、日次選定、登録/解除/完了/再抽選、stale 判定など副作用境界の中心。
 **Example**: `Result` 型で成功・失敗を返し、UI 層へ例外制御を漏らさない。
 
 ### Persistence
@@ -37,7 +37,7 @@
 ### Shared Foundations
 **Location**: `/src/shared/`  
 **Purpose**: 共通型とローカル日付ルールの定義元。  
-**Example**: `LocalDateKey` の生成と 14 日判定の前提をここに固定する。
+**Example**: `LocalDateKey` の生成と 7 日判定の前提をここに固定する。
 
 ### Tooling and Tests
 **Location**: `/scripts/`, `/test/`  
