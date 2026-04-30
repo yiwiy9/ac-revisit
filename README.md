@@ -77,6 +77,8 @@ npm run build
 4. `dist/ac-revisit.user.js` を Greasy Fork に更新投稿する
 5. 投稿後にバージョン表示とインストール導線を確認する
 
+新規投稿時の追加説明文やスクリーンショット方針は [Greasy Fork 投稿メモ](docs/greasy-fork-publishing.md) を参照してください。
+
 ## License
 
 MIT
