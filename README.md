@@ -3,6 +3,12 @@
 AtCoder 上で動作する Tampermonkey 向け userscript です。ログイン済みユーザー向けに、
 復習対象として登録した問題から、7 日経過した問題を「今日の一問」として 1 問ずつ提案します。
 
+## インストール
+
+Greasy Fork からインストールできます。
+
+https://greasyfork.org/ja/scripts/576017-ac-revisit
+
 ## 必要環境
 
 - Node.js 18 以上
