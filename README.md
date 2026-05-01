@@ -1,5 +1,9 @@
 # ac-revisit
 
+[![CI](https://github.com/yiwiy9/ac-revisit/actions/workflows/ci.yml/badge.svg)](https://github.com/yiwiy9/ac-revisit/actions/workflows/ci.yml)
+[![Greasy Fork](https://img.shields.io/badge/Greasy%20Fork-install-brightgreen)](https://greasyfork.org/ja/scripts/576017-ac-revisit)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 AtCoder 上で動作する Tampermonkey 向け userscript です。ログイン済みユーザー向けに、
 復習対象として登録した問題から、7 日経過した問題を「今日の一問」として 1 問ずつ提案します。
 
@@ -77,10 +81,10 @@ npm run build
 
 ## アップデート手順
 
-1. `package.json.version` を更新する
+1. `package.json.version` と `package-lock.json` のルートバージョンを更新する
 2. `npm run verify` を実行する
 3. `npm run build` を実行する
-4. `dist/ac-revisit.user.js` を Greasy Fork に更新投稿する
+4. `dist/ac-revisit.user.js` の内容を Greasy Fork のコード欄へ貼り付けて更新投稿する
 5. 投稿後にバージョン表示とインストール導線を確認する
 
 新規投稿時の追加説明文やスクリーンショット方針は [Greasy Fork 投稿メモ](docs/greasy-fork-publishing.md) を参照してください。

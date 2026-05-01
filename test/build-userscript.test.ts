@@ -42,6 +42,9 @@ test("buildUserscript emits a single userscript bundle with required metadata", 
 
   try {
     const outputPath = path.join(tempDir, "ac-revisit.user.js");
+    const packageJson = JSON.parse(
+      await readFile(new URL("../package.json", import.meta.url), "utf8"),
+    );
 
     await buildUserscript({
       packageJsonPath: new URL("../package.json", import.meta.url),
@@ -56,7 +59,9 @@ test("buildUserscript emits a single userscript bundle with required metadata", 
     expect(output).toMatch(/^\/\/ @homepageURL\s+https:\/\/github\.com\/yiwiy9\/ac-revisit$/m);
     expect(output).toMatch(/^\/\/ @author\s+yiwiy9$/m);
     expect(output).toMatch(/^\/\/ @license\s+MIT$/m);
-    expect(output).toMatch(/^\/\/ @version\s+0\.0\.0$/m);
+    expect(output).toMatch(
+      new RegExp(`^// @version\\s+${escapeRegExp(packageJson.version)}$`, "m"),
+    );
     expect(output).toMatch(
       /^\/\/ @description\s+AtCoder の復習問題を登録し、今日の一問を提案する userscript$/m,
     );
@@ -146,17 +151,29 @@ test("buildUserscript fails when published metadata version drifts from package.
   const tempDir = await mkdtemp(path.join(os.tmpdir(), "ac-revisit-build-"));
 
   try {
+    const packageJson = JSON.parse(
+      await readFile(new URL("../package.json", import.meta.url), "utf8"),
+    );
+
     await expect(
       buildUserscript({
         packageJsonPath: new URL("../package.json", import.meta.url),
         outputPath: pathToFileURL(path.join(tempDir, "ac-revisit.user.js")),
         userscriptVersion: "9.9.9",
       }),
-    ).rejects.toThrow(/Published metadata must use package\.json version: 0\.0\.0/);
+    ).rejects.toThrow(
+      new RegExp(
+        `Published metadata must use package\\.json version: ${escapeRegExp(packageJson.version)}`,
+      ),
+    );
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
 });
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 test("buildUserscript fails when published builds try to add extra metadata", async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), "ac-revisit-build-"));
